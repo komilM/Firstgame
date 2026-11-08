@@ -1,0 +1,917 @@
+:root {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: #fff;
+  background: #79b8cb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+select:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.game {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #8bd5f1;
+}
+
+.game canvas {
+  display: block;
+  touch-action: none;
+}
+
+.hud {
+  position: absolute;
+  z-index: 1;
+  top: 20px;
+  left: 50%;
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 64px minmax(150px, 1fr);
+  align-items: center;
+  gap: 8px;
+  width: min(590px, calc(100% - 340px));
+  min-width: 400px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.health-card,
+.score-card,
+.enemy-picker,
+.view-toggle,
+.weapon-toggle,
+.bottom-hint {
+  border: 1px solid rgb(255 255 255 / 28%);
+  background: rgb(20 30 31 / 76%);
+  backdrop-filter: blur(8px);
+}
+
+.health-card,
+.score-card {
+  padding: 9px 12px;
+  border-radius: 6px;
+}
+
+.health-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.player-card::before,
+.enemy-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  background: #45aaff;
+  content: "";
+}
+
+.enemy-card::before {
+  background: #f05b55;
+}
+
+.health-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 7px;
+  color: #e6eceb;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.health-label strong {
+  color: #fff;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.health-track {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 20%);
+}
+
+.health-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 240ms ease;
+}
+
+.blue-fill {
+  background: #48a9f5;
+}
+
+.red-fill {
+  background: #ed625a;
+}
+
+.score-card {
+  display: grid;
+  min-height: 53px;
+  justify-items: center;
+  gap: 1px;
+  padding: 6px 3px;
+  text-align: center;
+}
+
+.score-card span {
+  color: #d7dfdc;
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.score-card strong {
+  color: #fff;
+  font-size: 23px;
+  line-height: 1.1;
+}
+
+.open-menu-button {
+  position: absolute;
+  z-index: 3;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 6px;
+  background: rgb(20 30 31 / 76%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+}
+
+.open-menu-button:hover {
+  background: rgb(20 30 31 / 92%);
+}
+
+.enemy-picker {
+  position: absolute;
+  z-index: 3;
+  top: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.enemy-picker select {
+  min-width: 48px;
+  padding: 4px 6px;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 4px;
+  background: #273538;
+  color: #fff;
+  cursor: pointer;
+}
+
+.view-toggle {
+  position: absolute;
+  z-index: 3;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.view-toggle button,
+.weapon-toggle button {
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #e8eeee;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.view-toggle button:hover,
+.weapon-toggle button:hover {
+  background: rgb(255 255 255 / 12%);
+}
+
+.view-toggle button.selected,
+.weapon-toggle button.selected {
+  background: #397fa8;
+  color: #fff;
+}
+
+.weapon-toggle {
+  position: absolute;
+  z-index: 3;
+  right: 20px;
+  bottom: 70px;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 6px;
+}
+
+.weapon-toggle kbd {
+  margin-left: 4px;
+  color: #c9d2d1;
+  font: inherit;
+}
+
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgb(255 255 255 / 85%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.crosshair span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.bottom-hint {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: max-content;
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  transform: translateX(-50%);
+  border-radius: 6px;
+  color: #f1f3f0;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+.bottom-hint i {
+  width: 3px;
+  height: 3px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #b7c5bf;
+}
+
+.mobile-controls {
+  display: none;
+}
+
+.menu-overlay {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: grid;
+  padding: 20px;
+  overflow-y: auto;
+  place-items: center;
+  background:
+    radial-gradient(ellipse at 50% 38%, rgb(91 93 112 / 48%), transparent 50%),
+    radial-gradient(ellipse at 8% 85%, rgb(36 57 60 / 75%), transparent 36%),
+    radial-gradient(ellipse at 92% 78%, rgb(28 43 48 / 80%), transparent 38%),
+    linear-gradient(160deg, #34343e 0%, #171a22 54%, #101619 100%);
+}
+
+.menu-card {
+  width: min(900px, 100%);
+  padding: 36px;
+  border: 2px solid #111019;
+  border-radius: 10px;
+  background: linear-gradient(115deg, #353142, #55515e 48%, #353142);
+  color: #fff;
+  box-shadow: 0 18px 0 rgb(9 9 15 / 52%), 0 30px 90px rgb(0 0 0 / 55%), inset 0 0 0 5px rgb(14 13 22 / 50%);
+}
+
+.main-menu-card {
+  display: grid;
+  width: min(430px, 100%);
+  gap: 14px;
+  padding: 28px;
+}
+
+.main-menu-heading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.main-menu-heading h1 {
+  margin: 0;
+  font-size: clamp(22px, 5vw, 30px);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-shadow: 0 3px 0 #111019;
+}
+
+.menu-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 5px;
+  background: linear-gradient(#3497f4, #1261b1);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 3px rgb(8 35 81 / 43%), 0 3px 0 #102444;
+}
+
+.menu-nav-button,
+.menu-back-button,
+.menu-start {
+  min-height: 74px;
+  padding: 14px 20px;
+  clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
+  border: 2px solid #080f1c;
+  background: linear-gradient(#061a38, #031027);
+  color: #fff;
+  font-size: clamp(17px, 3vw, 23px);
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  text-align: center;
+  text-shadow: 0 2px #07111f;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 3px rgb(28 60 100 / 48%), 0 5px 0 #080b14;
+  transition: filter 120ms ease, transform 120ms ease;
+}
+
+.menu-nav-button:hover,
+.menu-back-button:hover,
+.menu-start:hover {
+  filter: brightness(1.17);
+  transform: translateY(-1px);
+}
+
+.menu-nav-button.primary {
+  min-height: 88px;
+  border-color: #101f3e;
+  background: linear-gradient(#288ee9, #1260ae);
+  font-size: clamp(23px, 4vw, 30px);
+  box-shadow: inset 0 0 0 4px rgb(104 190 255 / 42%), 0 6px 0 #08152a;
+}
+
+.main-language {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 5px;
+  color: #e5e3eb;
+  font-size: 12px;
+}
+
+.main-language select,
+.team-count select,
+.setting-row select {
+  padding: 8px 9px;
+  border: 2px solid #161321;
+  border-radius: 4px;
+  background: #292536;
+  color: #fff;
+  cursor: pointer;
+}
+
+.settings-card {
+  position: relative;
+  padding: 42px 38px 30px;
+}
+
+.settings-ribbon {
+  width: min(440px, 94%);
+  margin: -61px auto 28px;
+  padding: 14px 12px;
+  border: 3px solid #5b161d;
+  border-radius: 6px;
+  background: linear-gradient(#f0444c, #c71d30);
+  color: #fff;
+  font-size: clamp(17px, 3vw, 23px);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-shadow: 0 2px #64101b;
+  box-shadow: 0 5px 0 #5c1720, inset 0 0 0 3px rgb(255 133 127 / 38%);
+}
+
+.factions-label {
+  width: fit-content;
+  margin: 0 auto 18px;
+  padding: 7px 26px;
+  clip-path: polygon(0 0, 100% 0, 96% 80%, 50% 100%, 4% 80%);
+  background: linear-gradient(#9b5bff, #5c2bb0);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+  text-shadow: 0 1px #32125e;
+}
+
+.team-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.team-count {
+  display: grid;
+  min-height: 150px;
+  justify-items: center;
+  align-content: center;
+  gap: 9px;
+  border: 3px solid #14111d;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #353243, #272533);
+  color: #f3f1f6;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: inset 0 0 0 3px rgb(160 160 185 / 17%), 0 4px 0 #17141f;
+}
+
+.team-emblem {
+  display: grid;
+  width: 58px;
+  height: 75px;
+  place-items: center;
+  clip-path: polygon(0 0, 100% 0, 100% 76%, 50% 100%, 0 76%);
+  font-size: 34px;
+  text-shadow: 0 2px rgb(0 0 0 / 30%);
+}
+
+.blue-team .team-emblem {
+  background: linear-gradient(#36a4ff, #0756cb);
+  color: #a7d7ff;
+}
+
+.red-team .team-emblem {
+  background: linear-gradient(#ff5661, #b80f28);
+  color: #ffd1d5;
+}
+
+.team-count select {
+  min-width: 80px;
+  font-size: 17px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.versus-mark {
+  color: #f3d9a1;
+  font-size: 17px;
+  font-weight: 900;
+  text-align: center;
+  text-shadow: 0 2px #19151f;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.setting-row {
+  display: grid;
+  gap: 7px;
+  color: #f0eef4;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 23px;
+}
+
+.settings-actions .menu-back-button,
+.settings-actions .menu-start {
+  width: min(240px, 50%);
+  min-height: 60px;
+  font-size: 18px;
+}
+
+.menu-back-button {
+  background: linear-gradient(#258be0, #1157a2);
+}
+
+.menu-start {
+  background: linear-gradient(#f0444c, #c71d30);
+  box-shadow: inset 0 0 0 3px rgb(255 142 142 / 35%), 0 5px 0 #651620;
+}
+
+.controls-card {
+  width: min(540px, 100%);
+  padding-top: 40px;
+}
+
+.controls-card p {
+  margin: 12px 0;
+  color: #f0eef4;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.controls-card .menu-back-button {
+  width: 100%;
+  min-height: 56px;
+  margin-top: 12px;
+  font-size: 17px;
+}
+
+.menu-start:hover {
+  background: linear-gradient(#ff5a62, #d92338);
+}
+
+.menu-start:focus-visible,
+.menu-back-button:focus-visible,
+.menu-nav-button:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.start-overlay,
+.end-overlay {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  place-items: center;
+  border: 0;
+  background: rgb(10 20 21 / 30%);
+  cursor: pointer;
+}
+
+.start-card,
+.end-card {
+  display: flex;
+  width: min(440px, 100%);
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px;
+  border: 1px solid rgb(255 255 255 / 26%);
+  border-radius: 8px;
+  background: rgb(22 32 33 / 92%);
+  color: #fff;
+  text-align: center;
+}
+
+.start-card strong,
+.end-card strong {
+  font-size: clamp(20px, 4vw, 27px);
+  font-weight: 650;
+}
+
+.start-card > span,
+.end-card > span {
+  color: #e0e7e4;
+  font-size: 14px;
+}
+
+.start-card small {
+  max-width: 360px;
+  color: #c4cfcb;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.end-overlay {
+  cursor: default;
+}
+
+.end-card button {
+  margin-top: 6px;
+  padding: 9px 17px;
+  border: 0;
+  border-radius: 5px;
+  background: #397fa8;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.end-card button:hover {
+  background: #458fb9;
+}
+
+@media (max-width: 760px) {
+  .mobile-controls {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .touch-stick {
+    position: absolute;
+    bottom: max(25px, env(safe-area-inset-bottom));
+    left: max(18px, env(safe-area-inset-left));
+    width: 122px;
+    height: 122px;
+    border: 1px solid rgb(255 255 255 / 42%);
+    border-radius: 50%;
+    background: rgb(20 30 31 / 34%);
+    pointer-events: auto;
+    touch-action: none;
+  }
+
+  .touch-stick::before {
+    position: absolute;
+    inset: 25%;
+    border: 1px solid rgb(255 255 255 / 18%);
+    border-radius: 50%;
+    content: "";
+  }
+
+  .touch-stick-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    transform: translate(calc(-50% + var(--stick-x, 0px)), calc(-50% + var(--stick-y, 0px)));
+    border: 1px solid rgb(255 255 255 / 66%);
+    border-radius: 50%;
+    background: rgb(66 140 184 / 82%);
+    box-shadow: inset 0 1px rgb(255 255 255 / 25%);
+    pointer-events: none;
+  }
+
+  .touch-actions {
+    position: absolute;
+    right: max(18px, env(safe-area-inset-right));
+    bottom: max(23px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+    gap: 12px;
+    pointer-events: none;
+  }
+
+  .touch-action {
+    display: grid;
+    width: 68px;
+    height: 68px;
+    padding: 5px;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 48%);
+    border-radius: 50%;
+    background: rgb(20 30 31 / 68%);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .attack-action {
+    background: rgb(150 45 45 / 82%);
+  }
+
+  .jump-action {
+    background: rgb(35 91 135 / 82%);
+  }
+
+  .touch-action:active {
+    filter: brightness(1.35);
+  }
+
+  .game {
+    height: 100dvh;
+    min-height: 100%;
+  }
+
+  .hud {
+    top: 76px;
+    grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
+    gap: 5px;
+    width: calc(100% - 20px);
+    min-width: 0;
+  }
+
+  .health-card {
+    padding: 8px;
+  }
+
+  .health-label {
+    font-size: 8px;
+  }
+
+  .health-label strong {
+    font-size: 12px;
+  }
+
+  .score-card {
+    min-height: 48px;
+  }
+
+  .score-card span {
+    font-size: 6px;
+  }
+
+  .score-card strong {
+    font-size: 20px;
+  }
+
+  .enemy-picker {
+    top: 12px;
+    left: 10px;
+    gap: 6px;
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  .open-menu-button {
+    top: 12px;
+    left: 10px;
+    padding: 7px 9px;
+    font-size: 10px;
+  }
+
+  .view-toggle {
+    top: 12px;
+    right: 10px;
+  }
+
+  .view-toggle button {
+    padding: 6px;
+    font-size: 10px;
+  }
+
+  .weapon-toggle {
+    right: 10px;
+    bottom: 170px;
+  }
+
+  .weapon-toggle button {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  .menu-card {
+    padding: 21px;
+  }
+
+  .settings-card {
+    padding: 38px 21px 21px;
+  }
+
+  .settings-ribbon {
+    margin-top: -56px;
+  }
+
+  .team-settings {
+    grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .team-count {
+    min-height: 135px;
+    padding: 8px 4px;
+    font-size: 10px;
+  }
+
+  .bottom-hint {
+    display: none;
+  }
+}
+
+@media (max-width: 460px) {
+  .menu-overlay {
+    padding: 12px;
+  }
+
+  .menu-card {
+    padding: 17px;
+  }
+
+  .settings-card {
+    padding: 34px 14px 17px;
+  }
+
+  .settings-ribbon {
+    margin-top: -52px;
+    margin-bottom: 20px;
+  }
+
+  .team-settings {
+    grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
+    gap: 5px;
+  }
+
+  .team-emblem {
+    width: 46px;
+    height: 60px;
+  }
+
+  .team-count select {
+    min-width: 62px;
+  }
+
+  .settings-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+    margin-top: 16px;
+  }
+
+  .settings-actions {
+    gap: 10px;
+    margin-top: 17px;
+  }
+
+  .settings-actions .menu-back-button,
+  .settings-actions .menu-start {
+    min-height: 52px;
+    padding: 8px;
+    font-size: 14px;
+  }
+
+  .touch-stick {
+    width: 108px;
+    height: 108px;
+  }
+
+  .touch-stick-knob {
+    width: 43px;
+    height: 43px;
+  }
+
+  .touch-action {
+    width: 60px;
+    height: 60px;
+    font-size: 10px;
+  }
+
+  .weapon-toggle {
+    right: 10px;
+    bottom: 153px;
+  }
+}
