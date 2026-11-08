@@ -656,7 +656,7 @@ select:focus-visible {
   background: #458fb9;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
   .mobile-controls {
     position: absolute;
     z-index: 3;
