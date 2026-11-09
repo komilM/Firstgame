@@ -1671,30 +1671,60 @@ export default function App() {
   const text = UI_TEXT[language];
   const finished = playerHealth <= 0 || enemyCount === 0;
 
-  const updateTouchStick = (event) => {
-    if (touchStick.current.pointerId !== event.pointerId) return;
-    event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const maxDistance = bounds.width * 0.32;
-    const offsetX = event.clientX - (bounds.left + bounds.width / 2);
-    const offsetY = event.clientY - (bounds.top + bounds.height / 2);
-    const distance = Math.hypot(offsetX, offsetY);
-    const scale = distance > maxDistance ? maxDistance / distance : 1;
-    const x = offsetX * scale;
-    const y = offsetY * scale;
-    touchControls.current.moveX = x / maxDistance;
-    touchControls.current.moveY = y / maxDistance;
-    event.currentTarget.style.setProperty("--stick-x", `${x}px`);
-    event.currentTarget.style.setProperty("--stick-y", `${y}px`);
+  const stickEl = useRef(null);
+  const STICK_MAX = 44;
+
+  const placeStick = (x, y) => {
+    const stick = stickEl.current;
+    if (!stick) return;
+    stick.classList.add("active");
+    stick.style.left = `${x}px`;
+    stick.style.top = `${y}px`;
   };
 
-  const releaseTouchStick = (event) => {
+  const startTouchStick = (event) => {
+    event.preventDefault();
+    const area = event.currentTarget.parentElement.getBoundingClientRect();
+    touchStick.current = { pointerId: event.pointerId, baseX: event.clientX, baseY: event.clientY, area };
+    placeStick(event.clientX - area.left, event.clientY - area.top);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const moveTouchStick = (event) => {
+    const s = touchStick.current;
+    if (s.pointerId !== event.pointerId) return;
+    event.preventDefault();
+    let dx = event.clientX - s.baseX;
+    let dy = event.clientY - s.baseY;
+    const dist = Math.hypot(dx, dy);
+    if (dist > STICK_MAX) {
+      dx = (dx / dist) * STICK_MAX;
+      dy = (dy / dist) * STICK_MAX;
+      s.baseX = event.clientX - dx;
+      s.baseY = event.clientY - dy;
+      placeStick(s.baseX - s.area.left, s.baseY - s.area.top);
+    }
+    const nx = dx / STICK_MAX;
+    const ny = dy / STICK_MAX;
+    touchControls.current.moveX = Math.abs(nx) < 0.1 ? 0 : nx;
+    touchControls.current.moveY = Math.abs(ny) < 0.1 ? 0 : ny;
+    stickEl.current?.style.setProperty("--stick-x", `${dx}px`);
+    stickEl.current?.style.setProperty("--stick-y", `${dy}px`);
+  };
+
+  const endTouchStick = (event) => {
     if (touchStick.current.pointerId !== event.pointerId) return;
-    touchStick.current.pointerId = null;
+    touchStick.current = { pointerId: null };
     touchControls.current.moveX = 0;
     touchControls.current.moveY = 0;
-    event.currentTarget.style.setProperty("--stick-x", "0px");
-    event.currentTarget.style.setProperty("--stick-y", "0px");
+    const stick = stickEl.current;
+    if (stick) {
+      stick.classList.remove("active");
+      stick.style.left = "";
+      stick.style.top = "";
+      stick.style.setProperty("--stick-x", "0px");
+      stick.style.setProperty("--stick-y", "0px");
+    }
   };
 
   const releaseAttack = () => {
@@ -1842,17 +1872,13 @@ export default function App() {
       {!menuOpen && !finished && (
         <div className="mobile-controls" aria-label="Touch controls">
           <div
-            className="touch-stick"
-            onPointerDown={(event) => {
-              event.preventDefault();
-              touchStick.current.pointerId = event.pointerId;
-              event.currentTarget.setPointerCapture(event.pointerId);
-              updateTouchStick(event);
-            }}
-            onPointerMove={updateTouchStick}
-            onPointerUp={releaseTouchStick}
-            onPointerCancel={releaseTouchStick}
-          >
+            className="touch-zone"
+            onPointerDown={startTouchStick}
+            onPointerMove={moveTouchStick}
+            onPointerUp={endTouchStick}
+            onPointerCancel={endTouchStick}
+          />
+          <div className="touch-stick" ref={stickEl}>
             <span className="touch-stick-knob" />
           </div>
           <div className="touch-actions">
