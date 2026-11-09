@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import OnlineMenus from "./OnlineMenus.jsx";
+import { ONLINE_TEXT, useOnline } from "./online.js";
 
 const isTouch = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
 
@@ -835,7 +837,7 @@ function SwordModel({ scale = 1, accent = "#d8b15a" }) {
   );
 }
 
-function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) {
+function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy, remote = false }) {
   const fighter = useRef();
   const leftArm = useRef();
   const rightArm = useRef();
@@ -850,6 +852,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) 
   const swingT = useRef(1);
   const pending = useRef(null);
   const lastHealth = useRef(enemy.health);
+  const lastAttack = useRef(enemy.attack);
   const flash = useRef(0);
   const knock = useRef({ x: 0, z: 0 });
   const deathT = useRef(0);
@@ -864,6 +867,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) 
     if (!body || gone) return;
     body.rotation.order = "YXZ";
 
+    if (enemy.health > lastHealth.current) lastHealth.current = enemy.health;
     if (enemy.health < lastHealth.current) {
       lastHealth.current = enemy.health;
       flash.current = 1;
@@ -882,7 +886,53 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) 
       body.position.y = terrainHeight(body.position.x, body.position.z) - Math.max(0, deathT.current - 1.2) * 0.7;
       if (trail.current) trail.current.material.opacity = 0;
       if (spark.current) spark.current.visible = false;
-      if (deathT.current > 2.2) setGone(true);
+      if (deathT.current > 2.2 && !remote) setGone(true);
+      return;
+    }
+
+    if (remote) {
+      // Onlayn o'yinchi: AI yo'q, serverdan kelgan holatni silliq ko'rsatamiz
+      deathT.current = 0;
+      const t = enemy.target;
+      const a = enemy.actor.current;
+      const k = 1 - Math.exp(-delta * 14);
+      const px = a.x;
+      const pz = a.z;
+      a.x += (t.x - a.x) * k;
+      a.z += (t.z - a.z) * k;
+      let dyaw = t.yaw - a.yaw;
+      dyaw = Math.atan2(Math.sin(dyaw), Math.cos(dyaw));
+      a.yaw += dyaw * k;
+      a.jumpY += (t.jy - a.jumpY) * k;
+      const ground = terrainHeight(a.x, a.z);
+      body.position.set(a.x, ground + a.jumpY, a.z);
+      body.rotation.y = a.yaw + Math.PI;
+      enemy.position.set(a.x, ground, a.z);
+
+      if (enemy.attack !== lastAttack.current) {
+        lastAttack.current = enemy.attack;
+        swingT.current = 0;
+      }
+      const swinging = swingT.current < 1;
+      if (swinging) swingT.current = Math.min(1, swingT.current + delta / 0.62);
+      const moved = Math.hypot(a.x - px, a.z - pz) / Math.max(delta, 0.001) > 0.8;
+      const stride = moved && !swinging ? Math.sin(state.clock.elapsedTime * 9 + enemy.id) * 0.55 : 0;
+      const pose = swingPose(swingT.current, 0.36, 0.52);
+      flash.current = Math.max(0, flash.current - delta * 3);
+      body.rotation.x = pose.power * 0.2 - flash.current * 0.35;
+      leftLeg.current.rotation.x = stride;
+      rightLeg.current.rotation.x = -stride;
+      leftArm.current.rotation.x = -0.75 + stride * 0.12 - (swinging ? 0.15 : 0);
+      leftElbow.current.rotation.x = -0.6;
+      rightArm.current.rotation.x = swinging ? pose.arm : -0.4 + stride * 0.35;
+      rightArm.current.rotation.z = -0.06;
+      rightElbow.current.rotation.x = -0.25;
+      if (cape.current) cape.current.rotation.x = 0.1 + Math.abs(stride) * 0.5 + pose.power * 0.4;
+      if (trail.current) trail.current.material.opacity = pose.power * 0.85;
+      if (spark.current) {
+        spark.current.visible = flash.current > 0.15;
+        spark.current.scale.setScalar(0.5 + (1 - flash.current) * 1.4);
+      }
       return;
     }
 
@@ -1225,7 +1275,9 @@ function Projectile({ projectile, playerRef, enemiesRef, onDamagePlayer, onDamag
     velocity.current.y -= 2.8 * delta;
     arrow.current.position.addScaledVector(velocity.current, delta);
 
-    if (projectile.team === "enemy") {
+    if (projectile.visual) {
+      // boshqa o'yinchining o'qi: faqat ko'rinish, zarbani server hisoblaydi
+    } else if (projectile.team === "enemy") {
       const player = playerRef.current;
       const playerCenter = new THREE.Vector3(
         player.x,
@@ -1245,7 +1297,7 @@ function Projectile({ projectile, playerRef, enemiesRef, onDamagePlayer, onDamag
         enemyCenter.y += 1.05;
         if (arrow.current.position.distanceTo(enemyCenter) < 0.82) {
           removed.current = true;
-          onDamageEnemy(enemy, projectile.damage);
+          onDamageEnemy(enemy, projectile.damage, projectile.w);
           onDone(projectile.id);
           return;
         }
@@ -1856,6 +1908,8 @@ function GameScene({
   owned,
   addCoins,
   touchControls,
+  net = null,
+  remotes = [],
 }) {
   const { camera, gl } = useThree();
   const player = useRef({
@@ -1870,13 +1924,19 @@ function GameScene({
   const cameraOrbit = useRef({ yaw: 0, pitch: 0 });
   const keys = useRef(new Set());
   const enemies = useRef([]);
+  // Onlaynda dushmanlar — boshqa jamoadagi tirik o'yinchilar, yakkaxonda — AI
+  const foesRef = useMemo(
+    () => ({ get current() { return net ? net.getEnemies() : enemies.current; } }),
+    [net],
+  );
+  const stateTimer = useRef(0);
   const allies = useMemo(
-    () => Array.from({ length: Math.max(0, allyLimit - 1) }, (_, index) => ({
+    () => Array.from({ length: net ? 0 : Math.max(0, allyLimit - 1) }, (_, index) => ({
       id: index + 1,
       position: new THREE.Vector3(-2.2 + (index % 3) * 2.2, 0, 7 + Math.floor(index / 3) * 1.8),
       health: 100,
     })),
-    [allyLimit],
+    [allyLimit, net],
   );
   const projectilesId = useRef(0);
   const [projectiles, setProjectiles] = useState([]);
@@ -1893,8 +1953,15 @@ function GameScene({
   const touchLook = useRef(null);
   const [attackId, setAttackId] = useState(0);
 
-  const damageEnemy = useCallback((target, damage, byPlayer = false) => {
+  const damageEnemy = useCallback((target, damage, byPlayer = false, weaponId) => {
     if (target.health <= 0) return;
+    if (net) {
+      // Onlayn: zarbani server hisoblaydi, biz faqat xabar yuboramiz
+      const w = weaponId || weapon;
+      net.sendHit(target.id, w);
+      setEffects((current) => [...current.slice(-12), { id: ++effectId.current, damage: WEAPONS[w]?.damage ?? damage, position: [target.position.x, target.position.y + 1.3, target.position.z] }]);
+      return;
+    }
     target.health = Math.max(0, target.health - damage);
     setEffects((current) => [...current.slice(-12), { id: ++effectId.current, damage, position: [target.position.x, target.position.y + 1.3, target.position.z] }]);
     setEnemyHealth((current) =>
@@ -1909,7 +1976,7 @@ function GameScene({
         setEffects((current) => [...current.slice(-12), { id: ++effectId.current, coin: true, label: `+${KILL_COINS} 🪙`, damage: 0, position: [target.position.x, target.position.y + 2.2, target.position.z] }]);
       }
     }
-  }, [setEnemyCount, setEnemyHealth, addCoins]);
+  }, [setEnemyCount, setEnemyHealth, addCoins, net, weapon]);
 
   const launchPlayerArrow = useCallback(() => {
     const actor = player.current;
@@ -1934,9 +2001,11 @@ function GameScene({
         direction,
         damage: spec.damage,
         speed: spec.speed,
+        w: weapon,
       },
     ]);
-  }, [viewMode, weapon]);
+    net?.sendShot(origin, direction, weapon);
+  }, [viewMode, weapon, net]);
 
   const doAttack = useCallback(() => {
     if (player.current.health <= 0) return;
@@ -1946,7 +2015,7 @@ function GameScene({
       const me = player.current;
       let best = null;
       let bestDist = 7;
-      for (const foe of enemies.current) {
+      for (const foe of foesRef.current) {
         if (foe.health <= 0) continue;
         const d = Math.hypot(foe.position.x - me.x, foe.position.z - me.z);
         if (d < bestDist) { best = foe; bestDist = d; }
@@ -2106,7 +2175,7 @@ function GameScene({
     };
   }, [doAttack, gl, owned, setMenuOpen, setStarted, setViewMode, setWeapon, viewMode]);
 
-  if (enemies.current.length === 0) {
+  if (!net && enemies.current.length === 0) {
     enemies.current = STARTING_ENEMIES.slice(0, enemyLimit).map((enemy) => ({
       ...enemy,
       position: new THREE.Vector3(...enemy.position),
@@ -2129,8 +2198,41 @@ function GameScene({
     }));
   }
 
+  // Boshqa o'yinchilarning o'qlarini ko'rsatish
+  useEffect(() => {
+    if (!net) return undefined;
+    net.onShot.current = (m) => {
+      setProjectiles((current) => [
+        ...current.slice(-20),
+        {
+          id: ++projectilesId.current,
+          team: "remote",
+          visual: true,
+          origin: new THREE.Vector3(...m.o),
+          direction: new THREE.Vector3(...m.d).normalize(),
+          speed: WEAPONS[m.w]?.speed,
+        },
+      ]);
+    };
+    return () => {
+      net.onShot.current = null;
+    };
+  }, [net]);
+
   useFrame((_, delta) => {
     const actor = player.current;
+    const alive = !net || net.me.current.hp > 0;
+    if (net) {
+      const mine = net.me.current;
+      if (mine.pendingSpawn) {
+        const s = mine.pendingSpawn;
+        mine.pendingSpawn = null;
+        Object.assign(actor, { x: s.x, z: s.z, yaw: s.yaw, pitch: 0, jumpY: 0, jumpVelocity: 0 });
+        cameraOrbit.current.yaw = s.yaw;
+        cameraOrbit.current.pitch = 0;
+      }
+      actor.health = mine.hp;
+    }
     if (touchControls.current.attack || touchControls.current.attackHeld) {
       touchControls.current.attack = false;
       doAttack();
@@ -2148,7 +2250,7 @@ function GameScene({
         const forwardZ = -Math.cos(actor.yaw);
         let target = null;
         let closestDistance = spec.reach;
-        for (const enemy of enemies.current) {
+        for (const enemy of foesRef.current) {
           if (enemy.health <= 0) continue;
           const dx = enemy.position.x - actor.x;
           const dz = enemy.position.z - actor.z;
@@ -2173,7 +2275,7 @@ function GameScene({
     const sideways = Number(pressed.has("d") || pressed.has("arrowright")) -
       Number(pressed.has("a") || pressed.has("arrowleft")) + touchControls.current.moveX;
     const length = Math.hypot(forward, sideways);
-    if (length > 0) {
+    if (length > 0 && alive) {
       const speed = 5 * delta * Math.min(length, 1) / length;
       const moveYaw = viewMode === "third" ? cameraOrbit.current.yaw : actor.yaw;
       const moveX = -Math.sin(moveYaw) * forward + Math.cos(moveYaw) * sideways;
@@ -2228,6 +2330,15 @@ function GameScene({
         enemy.position.z += ((enemy.position.z - actor.z) / safeDistance) * delta * 1.3;
       }
     }
+
+    if (net) {
+      // Holatni serverga ~20 marta/soniya yuborish
+      stateTimer.current += delta;
+      if (stateTimer.current >= 0.05) {
+        stateTimer.current = 0;
+        net.sendState({ x: actor.x, z: actor.z, yaw: actor.yaw, jy: actor.jumpY, w: weapon, a: attackTime.current });
+      }
+    }
   });
 
   return (
@@ -2260,6 +2371,9 @@ function GameScene({
       {enemies.current.map((enemy) => (
         <Fighter key={enemy.id} enemy={enemy} targetRef={player} />
       ))}
+      {net && remotes.map((r) => (
+        <Fighter key={r.id} enemy={r} targetRef={player} ally={r.team === "blue"} remote />
+      ))}
       {allies.map((ally) => (
         <Fighter
           key={ally.id}
@@ -2291,12 +2405,12 @@ function GameScene({
           key={projectile.id}
           projectile={projectile}
           playerRef={player}
-          enemiesRef={enemies}
+          enemiesRef={foesRef}
           onDamagePlayer={(damage) => {
             player.current.health = Math.max(0, player.current.health - damage);
             setPlayerHealth(player.current.health);
           }}
-          onDamageEnemy={(enemy, dmg) => damageEnemy(enemy, dmg || 40, true)}
+          onDamageEnemy={(enemy, dmg, w) => damageEnemy(enemy, dmg || 40, true, w)}
           onDone={(id) => setProjectiles((current) => current.filter((arrow) => arrow.id !== id))}
         />
       ))}
@@ -2341,7 +2455,46 @@ export default function App() {
   const touchControls = useRef({ moveX: 0, moveY: 0, jump: false, attack: false, attackHeld: false });
   const touchStick = useRef({ pointerId: null });
   const text = UI_TEXT[language];
-  const finished = playerHealth <= 0 || enemyCount === 0;
+
+  const online = useOnline({
+    onStart: (map) => {
+      setMapId(map);
+      setResetKey((key) => key + 1);
+      setHasEntered(true);
+      setMenuOpen(false);
+      try {
+        Promise.resolve(document.querySelector(".game canvas")?.requestPointerLock?.()).catch(() => {});
+      } catch {
+        // sichqoncha qulfi uchun bosish kerak
+      }
+    },
+    onKill: () => addCoins(KILL_COINS),
+    onEnd: (won) => {
+      if (won) addCoins(WIN_COINS);
+      document.exitPointerLock?.();
+    },
+  });
+  const onlineMode = online.inRoom;
+  const ot = ONLINE_TEXT[language];
+  const showHealth = onlineMode ? online.myHp : playerHealth;
+  const finished = !onlineMode && (playerHealth <= 0 || enemyCount === 0);
+
+  // Xonaga kirganda / chiqqanda sahnani yangidan boshlash
+  const wasOnline = useRef(false);
+  useEffect(() => {
+    if (wasOnline.current === onlineMode) return;
+    const left = wasOnline.current && !onlineMode;
+    wasOnline.current = onlineMode;
+    setPlayerHealth(100);
+    setEnemyHealth(STARTING_ENEMIES.slice(0, enemyLimit).map(({ id, health }) => ({ id, health })));
+    setEnemyCount(enemyLimit);
+    setResetKey((key) => key + 1);
+    if (left) {
+      setMenuOpen(true);
+      setMenuPage("online");
+      document.exitPointerLock?.();
+    }
+  }, [onlineMode, enemyLimit]);
 
   useEffect(() => {
     winPaid.current = false;
@@ -2484,19 +2637,31 @@ export default function App() {
           owned={owned}
           addCoins={addCoins}
           touchControls={touchControls}
+          net={onlineMode ? online.net : null}
+          remotes={online.remoteList}
         />
       </Canvas>
 
-      <header className="hud">
-        <section className="health-card player-card">
-          <div className="health-label"><span>{text.bluePlayer}</span><strong>{playerHealth}%</strong></div>
-          <div className="health-track"><div className="health-fill blue-fill" style={{ width: `${playerHealth}%` }} /></div>
+      <header className={`hud${onlineMode ? " hud-online" : ""}`}>
+        <section className={`health-card player-card${onlineMode ? " online-card" : ""}`}>
+          <div className="health-label"><span>{onlineMode && online.team === "red" ? ot.redYou : text.bluePlayer}</span><strong>{showHealth}%</strong></div>
+          <div className="health-track"><div className={`health-fill ${onlineMode && online.team === "red" ? "red-fill" : "blue-fill"}`} style={{ width: `${showHealth}%` }} /></div>
         </section>
-        <div className="score-card"><span>{text.redEnemies}</span><strong>{enemyCount}</strong></div>
-        <section className="health-card enemy-card">
-          <div className="health-label"><span>{text.enemyHealth}</span><strong>{enemyHealth.find((enemy) => enemy.health > 0)?.health ?? 0}%</strong></div>
-          <div className="health-track"><div className="health-fill red-fill" style={{ width: `${enemyHealth.find((enemy) => enemy.health > 0)?.health ?? 0}%` }} /></div>
-        </section>
+        {onlineMode ? (
+          <div className="score-card score-online"><span>{ot.score}</span><strong>{online.score.blue}:{online.score.red}</strong></div>
+        ) : (
+          <div className="score-card"><span>{text.redEnemies}</span><strong>{enemyCount}</strong></div>
+        )}
+        {onlineMode ? (
+          <section className="health-card online-card">
+            <div className="health-label"><span>{ot.room} · {ot.firstTo} {online.killLimit}</span><strong>{online.room.code}</strong></div>
+          </section>
+        ) : (
+          <section className="health-card enemy-card">
+            <div className="health-label"><span>{text.enemyHealth}</span><strong>{enemyHealth.find((enemy) => enemy.health > 0)?.health ?? 0}%</strong></div>
+            <div className="health-track"><div className="health-fill red-fill" style={{ width: `${enemyHealth.find((enemy) => enemy.health > 0)?.health ?? 0}%` }} /></div>
+          </section>
+        )}
       </header>
 
       {!menuOpen && !finished && (
@@ -2545,7 +2710,11 @@ export default function App() {
         ))}
       </div>
       <div className="crosshair" aria-hidden="true"><span /></div>
-      {playerHealth > 0 && playerHealth < 100 && <div key={playerHealth} className="hurt-flash" aria-hidden="true" />}
+      {showHealth > 0 && showHealth < 100 && <div key={showHealth} className="hurt-flash" aria-hidden="true" />}
+      {onlineMode && online.phase === "play" && online.myHp <= 0 && !online.ended && <div className="respawn-banner">{ot.respawning}</div>}
+      {onlineMode && online.feed.length > 0 && (
+        <div className="kill-feed">{online.feed.map((item) => <div key={item.id}>{item.text}</div>)}</div>
+      )}
       <div className="bottom-hint">{text.move} <i /> {text.jump} <i /> {text.look} <i /> {text.attack} <i /> {text.weaponKeys} <i /> {text.cameraKey}</div>
 
       {!menuOpen && !finished && (
@@ -2593,6 +2762,9 @@ export default function App() {
               </header>
               <button className="menu-nav-button primary" type="button" onClick={hasEntered ? enterGame : () => setMenuPage("maps")}>
                 {hasEntered ? text.resume : text.play}
+              </button>
+              <button className="menu-nav-button" type="button" onClick={() => setMenuPage("online")}>
+                🌐 {ot.title}
               </button>
               <button className="menu-nav-button" type="button" onClick={() => setMenuPage("shop")}>
                 🪙 {text.shop} · {coins}
@@ -2789,6 +2961,16 @@ export default function App() {
               </button>
             </div>
           )}
+          {(menuPage === "online" || menuPage === "lobby") && (
+            <OnlineMenus
+              online={online}
+              language={language}
+              text={text}
+              menuPage={menuPage}
+              setMenuPage={setMenuPage}
+              onResume={enterGame}
+            />
+          )}
         </section>
       )}
       {finished && (
@@ -2798,6 +2980,25 @@ export default function App() {
             <span>{playerHealth <= 0 ? text.lost : text.won}</span>
             <span className="end-coins">🪙 +{runCoins}</span>
             <button onClick={restart}>{text.playAgain}</button>
+          </div>
+        </div>
+      )}
+      {onlineMode && online.ended && (
+        <div className="end-overlay">
+          <div className={`end-card ${online.winner === online.team ? "victory" : "defeat"}`}>
+            <strong>{online.winner === online.team ? text.victory : text.defeat}</strong>
+            <span>{online.winner === online.team ? ot.teamWon : ot.teamLost}</span>
+            <span className="end-coins">{online.score.blue} : {online.score.red}</span>
+            <button
+              onClick={() => {
+                online.backToLobby();
+                setMenuPage("lobby");
+                setMenuOpen(true);
+                document.exitPointerLock?.();
+              }}
+            >
+              {ot.backLobby}
+            </button>
           </div>
         </div>
       )}
