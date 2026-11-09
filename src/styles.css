@@ -1161,3 +1161,157 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--brass); ou
   .touch-stick { pointer-events: none; }
   .touch-stick.active { bottom: auto; transform: translate(-50%, -50%); background: rgb(14 23 38 / 62%); }
 }
+
+/* ===== Xarita va odam soni tanlash ===== */
+.maps-card { width: min(780px, 100%); padding-top: 40px; }
+.count-card { width: min(640px, 100%); padding-top: 40px; }
+.map-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.map-card {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 2px solid #0a111d;
+  border-radius: 8px;
+  background: linear-gradient(150deg, #243a5e, #172640);
+  color: var(--bone);
+  text-align: center;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 2px rgb(216 167 63 / 16%), 0 4px 0 #0a111d;
+  transition: transform 120ms ease;
+}
+.map-card:hover { transform: translateY(-2px); }
+.map-card.selected { border-color: var(--brass); box-shadow: 0 0 0 2px var(--brass), 0 0 20px rgb(216 167 63 / 40%), 0 4px 0 #0a111d; }
+.map-preview { display: block; height: 96px; border-radius: 5px; }
+.preview-meadow {
+  background:
+    radial-gradient(circle at 25% 108%, #5f8f3a 0 38%, transparent 39%),
+    radial-gradient(circle at 78% 112%, #6f9a3c 0 44%, transparent 45%),
+    linear-gradient(#8bd5f1 0 58%, #a6bd60 58%);
+}
+.preview-desert {
+  background:
+    radial-gradient(circle at 28% 108%, #d2a85e 0 40%, transparent 41%),
+    radial-gradient(circle at 80% 112%, #c4a46a 0 45%, transparent 46%),
+    linear-gradient(#f0d4a4 0 58%, #d8bf88 58%);
+}
+.preview-snow {
+  background:
+    radial-gradient(circle at 28% 108%, #ffffff 0 40%, transparent 41%),
+    radial-gradient(circle at 80% 112%, #dbe8f2 0 45%, transparent 46%),
+    linear-gradient(#bcd4e6 0 58%, #e9f2f9 58%);
+}
+.map-info { display: grid; gap: 3px; }
+.map-name { font-family: var(--display); font-size: 16px; font-weight: 800; }
+.map-desc { font-size: 11px; line-height: 1.35; opacity: 0.8; }
+.count-row { display: grid; gap: 8px; margin-bottom: 16px; }
+.count-label { font-family: var(--display); font-size: 14px; font-weight: 800; color: var(--bone); }
+.count-row.blue .count-label { color: #8fc0ff; }
+.count-row.red .count-label { color: #ff8e9d; }
+.count-chips { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
+.count-chip {
+  min-height: 46px;
+  border: 2px solid #0a111d;
+  border-radius: 6px;
+  background: #1a2b47;
+  color: var(--bone);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.count-chip.selected { border-color: #f3d98d; background: linear-gradient(#f0c75e, #c28a26); color: #2a1c05; }
+@media (max-width: 620px) {
+  .map-cards { grid-template-columns: 1fr; gap: 8px; }
+  .map-card { grid-template-columns: 96px minmax(0, 1fr); align-items: center; text-align: left; }
+  .map-preview { height: 62px; }
+  .count-chips { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+@media (max-height: 520px) and (min-width: 621px) {
+  .map-preview { height: 62px; }
+  .map-desc { display: none; }
+  .count-chip { min-height: 38px; }
+  .count-row { margin-bottom: 10px; }
+}
+
+/* Xarita + odam soni bitta oynada */
+.maps-card { width: min(820px, 100%); }
+.section-label { margin: 14px 0 8px; color: var(--brass); font-family: var(--display); font-size: 13px; font-weight: 800; letter-spacing: 0.08em; }
+.maps-card .count-row { margin-bottom: 10px; }
+@media (max-height: 520px) {
+  .section-label { margin: 8px 0 5px; font-size: 11px; }
+  .maps-card .map-preview { height: 46px; }
+  .maps-card .map-card { gap: 4px; padding: 5px; }
+  .maps-card .map-name { font-size: 13px; }
+  .maps-card .map-desc { display: none; }
+  .maps-card .count-row { gap: 4px; margin-bottom: 6px; }
+  .maps-card .count-label { font-size: 11px; }
+  .maps-card .count-chip { min-height: 30px; font-size: 14px; }
+}
+
+/* ===== Magazin va tangalar ===== */
+.coin-chip {
+  position: absolute;
+  z-index: 3;
+  top: 62px;
+  left: 20px;
+  padding: 5px 10px;
+  border: 1px solid rgb(216 167 63 / 45%);
+  border-radius: 6px;
+  background: rgb(14 23 38 / 80%);
+  color: var(--brass);
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 800;
+  pointer-events: none;
+}
+.end-coins { color: var(--brass) !important; font-family: var(--display); font-size: 20px !important; font-weight: 800; }
+.shop-card { width: min(780px, 100%); padding-top: 40px; }
+.shop-coins { margin-bottom: 4px; color: var(--brass); font-family: var(--display); font-size: 24px; font-weight: 800; text-align: center; }
+.shop-card .shop-hint { margin: 0 0 14px; font-size: 12px; opacity: 0.8; }
+.shop-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.shop-item {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  padding: 10px 8px;
+  border: 2px solid #0a111d;
+  border-radius: 8px;
+  background: linear-gradient(150deg, #243a5e, #172640);
+  color: var(--bone);
+  text-align: center;
+  box-shadow: inset 0 0 0 2px rgb(216 167 63 / 16%), 0 4px 0 #0a111d;
+}
+.shop-item.selected { border-color: var(--brass); box-shadow: 0 0 0 2px var(--brass), 0 0 18px rgb(216 167 63 / 35%); }
+.weapon-icon { width: 56px; height: 56px; }
+.shop-name { font-family: var(--display); font-size: 15px; font-weight: 800; }
+.shop-stats { font-size: 11px; opacity: 0.8; }
+.shop-btn {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 4px;
+  border: 2px solid var(--brass-d);
+  border-radius: 6px;
+  background: linear-gradient(#24395e, #162640);
+  color: var(--bone);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.shop-btn.buy { border-color: #f3d98d; background: linear-gradient(#f0c75e, #c28a26); color: #2a1c05; }
+.shop-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.shop-card .menu-back-button { width: 100%; min-height: 56px; margin-top: 16px; font-size: 17px; }
+@media (max-width: 620px) {
+  .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
+  .coin-chip { top: 52px; left: 10px; font-size: 12px; }
+}
+@media (max-height: 520px) {
+  .weapon-icon { width: 34px; height: 34px; }
+  .shop-item { gap: 2px; padding: 6px; }
+  .shop-name { font-size: 13px; }
+  .shop-stats { font-size: 10px; }
+  .shop-btn { min-height: 30px; }
+  .shop-coins { font-size: 18px; }
+  .shop-card .shop-hint { margin-bottom: 6px; }
+  .shop-card .menu-back-button { min-height: 40px; margin-top: 8px; font-size: 14px; }
+}
