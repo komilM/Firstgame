@@ -4,6 +4,8 @@ import * as THREE from "three";
 import OnlineMenus from "./OnlineMenus.jsx";
 import { ONLINE_TEXT, useOnline } from "./online.js";
 
+alert("Ko'p telefo'n o'ynama");
+
 const isTouch = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
 
 const KILL_COINS = 5;
