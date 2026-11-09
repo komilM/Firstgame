@@ -837,7 +837,7 @@ function SwordModel({ scale = 1, accent = "#d8b15a" }) {
   );
 }
 
-function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy, remote = false }) {
+function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy, remote = false, pausedRef }) {
   const fighter = useRef();
   const leftArm = useRef();
   const rightArm = useRef();
@@ -866,6 +866,8 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy, re
     const body = fighter.current;
     if (!body || gone) return;
     body.rotation.order = "YXZ";
+    // Menyu ochiq bo'lsa AI jangi to'xtab turadi
+    if (!remote && pausedRef?.current) return;
 
     if (enemy.health > lastHealth.current) lastHealth.current = enemy.health;
     if (enemy.health < lastHealth.current) {
@@ -1910,6 +1912,7 @@ function GameScene({
   touchControls,
   net = null,
   remotes = [],
+  paused = false,
 }) {
   const { camera, gl } = useThree();
   const player = useRef({
@@ -1930,6 +1933,8 @@ function GameScene({
     [net],
   );
   const stateTimer = useRef(0);
+  const pausedRef = useRef(paused);
+  pausedRef.current = paused;
   const allies = useMemo(
     () => Array.from({ length: net ? 0 : Math.max(0, allyLimit - 1) }, (_, index) => ({
       id: index + 1,
@@ -2180,6 +2185,7 @@ function GameScene({
       ...enemy,
       position: new THREE.Vector3(...enemy.position),
       onAttack: (damage) => {
+        if (pausedRef.current) return; // menyu ochiq: zarar yo'q
         player.current.health = Math.max(0, player.current.health - damage);
         setPlayerHealth(player.current.health);
         shake.current = Math.max(shake.current, 0.09);
@@ -2369,7 +2375,7 @@ function GameScene({
       <SpawnFlag x={0} z={-32} color="#d8283f" />
       <SpawnFlag x={0} z={11} color="#2f6fe0" />
       {enemies.current.map((enemy) => (
-        <Fighter key={enemy.id} enemy={enemy} targetRef={player} />
+        <Fighter key={enemy.id} enemy={enemy} targetRef={player} pausedRef={pausedRef} />
       ))}
       {net && remotes.map((r) => (
         <Fighter key={r.id} enemy={r} targetRef={player} ally={r.team === "blue"} remote />
@@ -2382,6 +2388,7 @@ function GameScene({
           targetRef={player}
           enemiesRef={enemies}
           onDamageEnemy={damageEnemy}
+          pausedRef={pausedRef}
         />
       ))}
       <PlayerAvatar
@@ -2407,6 +2414,7 @@ function GameScene({
           playerRef={player}
           enemiesRef={foesRef}
           onDamagePlayer={(damage) => {
+            if (pausedRef.current) return;
             player.current.health = Math.max(0, player.current.health - damage);
             setPlayerHealth(player.current.health);
           }}
@@ -2477,7 +2485,8 @@ export default function App() {
   const onlineMode = online.inRoom;
   const ot = ONLINE_TEXT[language];
   const showHealth = onlineMode ? online.myHp : playerHealth;
-  const finished = !onlineMode && (playerHealth <= 0 || enemyCount === 0);
+  const inOnlineMenu = menuOpen && (menuPage === "online" || menuPage === "lobby");
+  const finished = !onlineMode && !inOnlineMenu && (playerHealth <= 0 || enemyCount === 0);
 
   // Xonaga kirganda / chiqqanda sahnani yangidan boshlash
   const wasOnline = useRef(false);
@@ -2639,6 +2648,7 @@ export default function App() {
           touchControls={touchControls}
           net={onlineMode ? online.net : null}
           remotes={online.remoteList}
+          paused={menuOpen}
         />
       </Canvas>
 
