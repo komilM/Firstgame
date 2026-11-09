@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
+const isTouch = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
+
 const STARTING_ENEMIES = [
   { id: 1, position: [-0.55, 0, 4], health: 100 },
   { id: 2, position: [2.4, 0, -9], health: 100 },
@@ -143,7 +145,7 @@ function terrainHeight(x, z) {
 
 function Terrain({ mapId }) {
   const geometry = useMemo(() => {
-    const terrain = new THREE.PlaneGeometry(120, 120, 120, 120);
+    const terrain = new THREE.PlaneGeometry(120, 120, isTouch ? 70 : 120, isTouch ? 70 : 120);
     const positions = terrain.attributes.position;
     for (let index = 0; index < positions.count; index += 1) {
       const x = positions.getX(index);
@@ -1115,6 +1117,22 @@ function GameScene({
     if (player.current.health <= 0) return;
     if (performance.now() < nextAttackTime.current) return;
     nextAttackTime.current = performance.now() + 430;
+    if (isTouch) {
+      const me = player.current;
+      let best = null;
+      let bestDist = 7;
+      for (const foe of enemies.current) {
+        if (foe.health <= 0) continue;
+        const d = Math.hypot(foe.position.x - me.x, foe.position.z - me.z);
+        if (d < bestDist) { best = foe; bestDist = d; }
+      }
+      if (best) {
+        me.yaw = Math.atan2(-(best.position.x - me.x), -(best.position.z - me.z));
+        me.pitch = weapon === "bow" ? Math.atan2(-0.43 + 0.0039 * bestDist * bestDist, bestDist) : 0;
+        cameraOrbit.current.yaw = me.yaw;
+        if (weapon === "bow") cameraOrbit.current.pitch = THREE.MathUtils.clamp(me.pitch, -0.28, 0.55);
+      }
+    }
     if (viewMode === "third" && weapon === "sword") {
       player.current.yaw = cameraOrbit.current.yaw;
     }
@@ -1282,7 +1300,7 @@ function GameScene({
 
   useFrame((_, delta) => {
     const actor = player.current;
-    if (touchControls.current.attack) {
+    if (touchControls.current.attack || touchControls.current.attackHeld) {
       touchControls.current.attack = false;
       doAttack();
     }
@@ -1325,7 +1343,7 @@ function GameScene({
       Number(pressed.has("a") || pressed.has("arrowleft")) + touchControls.current.moveX;
     const length = Math.hypot(forward, sideways);
     if (length > 0) {
-      const speed = 5 * delta / length;
+      const speed = 5 * delta * Math.min(length, 1) / length;
       const moveYaw = viewMode === "third" ? cameraOrbit.current.yaw : actor.yaw;
       const moveX = -Math.sin(moveYaw) * forward + Math.cos(moveYaw) * sideways;
       const moveZ = -Math.cos(moveYaw) * forward - Math.sin(moveYaw) * sideways;
@@ -1389,8 +1407,8 @@ function GameScene({
         castShadow
         position={[-12, 24, 8]}
         intensity={2.2}
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={isTouch ? 1024 : 2048}
+        shadow-mapSize-height={isTouch ? 1024 : 2048}
         shadow-camera-left={-38}
         shadow-camera-right={38}
         shadow-camera-top={38}
@@ -1466,7 +1484,7 @@ export default function App() {
   const [resetKey, setResetKey] = useState(0);
   const [viewMode, setViewMode] = useState("first");
   const [weapon, setWeapon] = useState("sword");
-  const touchControls = useRef({ moveX: 0, moveY: 0, jump: false, attack: false });
+  const touchControls = useRef({ moveX: 0, moveY: 0, jump: false, attack: false, attackHeld: false });
   const touchStick = useRef({ pointerId: null });
   const text = UI_TEXT[language];
   const finished = playerHealth <= 0 || enemyCount === 0;
@@ -1495,6 +1513,10 @@ export default function App() {
     touchControls.current.moveY = 0;
     event.currentTarget.style.setProperty("--stick-x", "0px");
     event.currentTarget.style.setProperty("--stick-y", "0px");
+  };
+
+  const releaseAttack = () => {
+    touchControls.current.attackHeld = false;
   };
 
   const pressTouchAction = (event, action) => {
@@ -1546,9 +1568,9 @@ export default function App() {
       <Canvas
         key={resetKey}
         shadows
-        dpr={[1, 1.5]}
+        dpr={isTouch ? [1, 1.25] : [1, 1.5]}
         camera={{ position: [0, 1.68, 7], fov: 76, near: 0.1, far: 150 }}
-        gl={{ antialias: true, toneMapping: THREE.ACESFilmicToneMapping }}
+        gl={{ antialias: !isTouch, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping }}
       >
         <GameScene
           setPlayerHealth={setPlayerHealth}
@@ -1651,11 +1673,21 @@ export default function App() {
             <span className="touch-stick-knob" />
           </div>
           <div className="touch-actions">
-            <button type="button" className="touch-action attack-action" onPointerDown={(event) => pressTouchAction(event, "attack")}>
+            <button type="button" className="touch-action attack-action" onPointerDown={(event) => { pressTouchAction(event, "attack"); touchControls.current.attackHeld = true; }} onPointerUp={releaseAttack} onPointerCancel={releaseAttack}>
               {weapon === "sword" ? text.sword : text.bow}
             </button>
             <button type="button" className="touch-action jump-action" onPointerDown={(event) => pressTouchAction(event, "jump")}>
-              {text.jump}
+              ↑
+            </button>
+            <button
+              type="button"
+              className="touch-action swap-action"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                setWeapon((current) => (current === "sword" ? "bow" : "sword"));
+              }}
+            >
+              {weapon === "sword" ? "🏹" : "⚔"}
             </button>
           </div>
         </div>

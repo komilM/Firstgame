@@ -670,13 +670,13 @@ select:focus-visible {
 
   .touch-stick {
     position: absolute;
-    bottom: max(25px, env(safe-area-inset-bottom));
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
     left: max(18px, env(safe-area-inset-left));
-    width: 122px;
-    height: 122px;
-    border: 1px solid rgb(255 255 255 / 42%);
+    width: clamp(104px, 18vmin, 124px);
+    height: clamp(104px, 18vmin, 124px);
+    border: 1px solid rgb(255 255 255 / 54%);
     border-radius: 50%;
-    background: rgb(20 30 31 / 34%);
+    background: rgb(20 30 31 / 48%);
     pointer-events: auto;
     touch-action: none;
   }
@@ -693,8 +693,8 @@ select:focus-visible {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 48px;
-    height: 48px;
+    width: 46px;
+    height: 46px;
     transform: translate(calc(-50% + var(--stick-x, 0px)), calc(-50% + var(--stick-y, 0px)));
     border: 1px solid rgb(255 255 255 / 66%);
     border-radius: 50%;
@@ -706,23 +706,23 @@ select:focus-visible {
   .touch-actions {
     position: absolute;
     right: max(18px, env(safe-area-inset-right));
-    bottom: max(23px, env(safe-area-inset-bottom));
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
     display: flex;
     flex-direction: column-reverse;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     pointer-events: none;
   }
 
   .touch-action {
     display: grid;
-    width: 68px;
-    height: 68px;
+    width: clamp(60px, 10vmin, 70px);
+    height: clamp(60px, 10vmin, 70px);
     padding: 5px;
     place-items: center;
-    border: 1px solid rgb(255 255 255 / 48%);
+    border: 1px solid rgb(255 255 255 / 60%);
     border-radius: 50%;
-    background: rgb(20 30 31 / 68%);
+    background: rgb(20 30 31 / 82%);
     color: #fff;
     font-size: 11px;
     font-weight: 700;
@@ -742,6 +742,7 @@ select:focus-visible {
 
   .touch-action:active {
     filter: brightness(1.35);
+    transform: scale(0.94);
   }
 
   .game {
@@ -750,7 +751,7 @@ select:focus-visible {
   }
 
   .hud {
-    top: 76px;
+    top: max(68px, calc(env(safe-area-inset-top) + 56px));
     grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
     gap: 5px;
     width: calc(100% - 20px);
@@ -758,15 +759,23 @@ select:focus-visible {
   }
 
   .health-card {
-    padding: 8px;
+    padding: 7px;
+    background: rgb(20 30 31 / 84%);
   }
 
   .health-label {
-    font-size: 8px;
+    font-size: 7px;
+  }
+
+  .health-label span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .health-label strong {
-    font-size: 12px;
+    flex: 0 0 auto;
+    font-size: 11px;
   }
 
   .score-card {
@@ -782,37 +791,39 @@ select:focus-visible {
   }
 
   .enemy-picker {
-    top: 12px;
-    left: 10px;
+    top: max(8px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
     gap: 6px;
     padding: 6px;
     font-size: 10px;
   }
 
   .open-menu-button {
-    top: 12px;
-    left: 10px;
+    top: max(8px, env(safe-area-inset-top));
+    left: max(10px, env(safe-area-inset-left));
     padding: 7px 9px;
     font-size: 10px;
   }
 
   .view-toggle {
-    top: 12px;
-    right: 10px;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(10px, env(safe-area-inset-right));
   }
 
   .view-toggle button {
-    padding: 6px;
+    min-height: 40px;
+    padding: 7px 9px;
     font-size: 10px;
   }
 
   .weapon-toggle {
-    right: 10px;
-    bottom: 170px;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(150px, calc(env(safe-area-inset-bottom) + 138px));
   }
 
   .weapon-toggle button {
-    padding: 6px 8px;
+    min-height: 40px;
+    padding: 8px 10px;
     font-size: 10px;
   }
 
@@ -895,8 +906,8 @@ select:focus-visible {
   }
 
   .touch-stick {
-    width: 108px;
-    height: 108px;
+    width: clamp(104px, 18vmin, 124px);
+    height: clamp(104px, 18vmin, 124px);
   }
 
   .touch-stick-knob {
@@ -905,13 +916,75 @@ select:focus-visible {
   }
 
   .touch-action {
-    width: 60px;
-    height: 60px;
+    width: clamp(60px, 10vmin, 70px);
+    height: clamp(60px, 10vmin, 70px);
     font-size: 10px;
   }
 
   .weapon-toggle {
-    right: 10px;
-    bottom: 153px;
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(150px, calc(env(safe-area-inset-bottom) + 138px));
   }
+}
+
+/* ===== Telefon: to'g'ri o'lcham, ixcham HUD, qulay tugmalar ===== */
+@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
+  html, body, #root { height: 100%; min-height: 0; }
+  body { min-height: 0; }
+  .game {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .weapon-toggle { display: none; }
+  .touch-actions {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, calc(env(safe-area-inset-bottom) + 10px));
+    display: block;
+    width: 176px;
+    height: 168px;
+  }
+  .touch-action { position: absolute; width: 62px; height: 62px; font-size: 22px; }
+  .attack-action { right: 0; bottom: 0; width: 92px; height: 92px; font-size: 13px; }
+  .jump-action { right: 102px; bottom: 16px; }
+  .swap-action { right: 24px; bottom: 102px; background: rgb(60 60 70 / 82%); }
+}
+
+@media (pointer: coarse) and (max-height: 600px) {
+  .hud {
+    top: max(8px, env(safe-area-inset-top));
+    width: calc(100% - 340px);
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+    gap: 5px;
+  }
+  .health-card { padding: 5px 8px; }
+  .health-label { margin-bottom: 4px; font-size: 7px; }
+  .health-label strong { font-size: 11px; }
+  .health-track { height: 4px; }
+  .score-card { min-height: 36px; padding: 3px; }
+  .score-card span { font-size: 6px; }
+  .score-card strong { font-size: 16px; }
+}
+
+@media (max-height: 520px) {
+  .menu-overlay { padding: 8px; }
+  .main-menu-card { gap: 8px; padding: 14px; }
+  .main-menu-heading { margin-bottom: 0; }
+  .menu-nav-button { min-height: 46px; padding: 8px 14px; font-size: 16px; }
+  .menu-nav-button.primary { min-height: 56px; font-size: 20px; }
+  .menu-card { padding: 16px; }
+  .settings-card { padding: 30px 16px 14px; }
+  .settings-ribbon { margin: -46px auto 10px; padding: 8px; font-size: 16px; }
+  .factions-label { margin-bottom: 8px; padding: 4px 20px; }
+  .team-count { min-height: 84px; gap: 4px; }
+  .team-emblem { width: 34px; height: 44px; font-size: 20px; }
+  .settings-grid { margin-top: 10px; }
+  .settings-actions { margin-top: 12px; }
+  .settings-actions .menu-back-button, .settings-actions .menu-start { min-height: 44px; font-size: 15px; }
 }

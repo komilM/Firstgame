@@ -17,7 +17,7 @@ Open the local address printed by Vite. To create a production build, run
 
 - **W A S D**: move
 - **Mouse**: look around (click the game to capture the mouse)
-- **Touchscreen**: drag on the game to look; use the left virtual stick to move and the right buttons to jump and attack/shoot
+- **Touchscreen**: drag on the game to look; tilt the left virtual stick to move at different speeds and use the right buttons to jump and attack/shoot
 - **Space**: jump
 - **Left mouse button**: attack with the selected weapon
 - **1**: select sword; a close hit reduces enemy health
