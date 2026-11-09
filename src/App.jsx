@@ -4,18 +4,14 @@ import * as THREE from "three";
 
 const isTouch = typeof window !== "undefined" && !!window.matchMedia?.("(pointer: coarse)").matches;
 
-const STARTING_ENEMIES = [
-  { id: 1, position: [-0.55, 0, 4], health: 100 },
-  { id: 2, position: [2.4, 0, -9], health: 100 },
-  { id: 3, position: [-5, 0, -10], health: 100 },
-  { id: 4, position: [5, 0, -14], health: 100 },
-  { id: 5, position: [-8, 0, -5], health: 100 },
-  { id: 6, position: [8, 0, -7], health: 100 },
-  { id: 7, position: [-11, 0, -16], health: 100 },
-  { id: 8, position: [11, 0, -19], health: 100 },
-  { id: 9, position: [-3, 0, -23], health: 100 },
-  { id: 10, position: [4, 0, -27], health: 100 },
-];
+// Hamma raqiblar bitta tomondan chiqadi: shimol, qizil bayroq yonidan
+const SPAWN_Z = -26;
+const SPAWN_X = [0, -1, 1, -2, 2];
+const STARTING_ENEMIES = Array.from({ length: 10 }, (_, index) => ({
+  id: index + 1,
+  position: [SPAWN_X[index % 5] * 2.6, 0, SPAWN_Z - Math.floor(index / 5) * 2.4],
+  health: 100,
+}));
 
 const UI_TEXT = {
   uz: {
@@ -169,6 +165,41 @@ function Terrain({ mapId }) {
   );
 }
 
+function SpawnFlag({ x, z, color }) {
+  const y = terrainHeight(x, z);
+  const geometry = useMemo(() => new THREE.PlaneGeometry(1.7, 1.05, 14, 1), []);
+
+  useFrame((state) => {
+    const pos = geometry.attributes.position;
+    const t = state.clock.elapsedTime;
+    for (let i = 0; i < pos.count; i += 1) {
+      const u = (pos.getX(i) + 0.85) / 1.7;
+      pos.setZ(i, Math.sin(u * 5 - t * 4) * 0.16 * u);
+    }
+    pos.needsUpdate = true;
+  });
+
+  return (
+    <group position={[x, y, z]}>
+      <mesh position={[0, 0.25, 0]} castShadow>
+        <cylinderGeometry args={[1.1, 1.5, 0.5, 8]} />
+        <meshStandardMaterial color="#7b7468" roughness={1} />
+      </mesh>
+      <mesh position={[0, 3.2, 0]} castShadow>
+        <cylinderGeometry args={[0.07, 0.09, 5.8, 8]} />
+        <meshStandardMaterial color="#5a3d26" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 6.2, 0]}>
+        <sphereGeometry args={[0.14, 10, 8]} />
+        <meshStandardMaterial color="#d8a73f" metalness={0.8} roughness={0.3} />
+      </mesh>
+      <mesh geometry={geometry} position={[0.93, 5.35, 0]} castShadow>
+        <meshStandardMaterial color={color} roughness={0.7} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  );
+}
+
 function Clouds() {
   const clouds = [
     [-28, 16, -35, 1],
@@ -201,6 +232,64 @@ const TEAM = {
   ally: { plume: "#3aa0ff", cape: "#1d5d99", trail: "#a9d8ff", accent: "#7cc4ff" },
   enemy: { plume: "#ff4b4b", cape: "#8f2430", trail: "#ffb9a8", accent: "#e8b060" },
 };
+
+const SKIN = ["#c89570", "#a8764f", "#e0b48c", "#8a5a3b"];
+const HAIR = ["#2b1d14", "#5a3a22", "#8a6a3a", "#1c1c1c"];
+
+function makeLabel(text, color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  ctx.font = "bold 44px Georgia, serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineWidth = 8;
+  ctx.strokeStyle = "#1a0a0a";
+  ctx.strokeText(text, 64, 34);
+  ctx.fillStyle = color;
+  ctx.fillText(text, 64, 34);
+  return new THREE.CanvasTexture(canvas);
+}
+
+function HitEffect({ effect, onDone }) {
+  const label = useRef();
+  const sparkRefs = useRef([]);
+  const age = useRef(0);
+  const texture = useMemo(() => makeLabel(`-${effect.damage}`, effect.damage >= 30 ? "#ffd04a" : "#ffffff"), [effect]);
+  const sparks = useMemo(() => Array.from({ length: 8 }, () => new THREE.Vector3(
+    (Math.random() - 0.5) * 5, Math.random() * 4 + 1, (Math.random() - 0.5) * 5,
+  )), []);
+
+  useFrame((_, delta) => {
+    age.current += delta;
+    const t = age.current;
+    sparkRefs.current.forEach((mesh, i) => {
+      if (!mesh) return;
+      mesh.position.set(sparks[i].x * t, sparks[i].y * t - 6 * t * t, sparks[i].z * t);
+      mesh.scale.setScalar(Math.max(0.001, 1 - t / 0.45));
+    });
+    if (label.current) {
+      label.current.position.y = 0.3 + t * 1.4;
+      label.current.material.opacity = Math.max(0, Math.min(1, (0.8 - t) * 3));
+    }
+    if (t > 0.8) onDone(effect.id);
+  });
+
+  return (
+    <group position={effect.position}>
+      {sparks.map((_, i) => (
+        <mesh key={i} ref={(mesh) => { sparkRefs.current[i] = mesh; }}>
+          <octahedronGeometry args={[0.07, 0]} />
+          <meshBasicMaterial color={i % 2 ? "#ffd04a" : "#fff6c8"} toneMapped={false} />
+        </mesh>
+      ))}
+      <sprite ref={label} scale={[1.3, 0.65, 1]} position={[0, 0.3, 0]}>
+        <spriteMaterial map={texture} transparent depthTest={false} toneMapped={false} />
+      </sprite>
+    </group>
+  );
+}
 
 const ease = (x) => x * x * (3 - 2 * x);
 
@@ -266,6 +355,9 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) 
   const deathT = useRef(0);
   const [gone, setGone] = useState(false);
   const team = ally ? TEAM.ally : TEAM.enemy;
+  const skin = SKIN[enemy.id % 4];
+  const hair = HAIR[(enemy.id + (ally ? 2 : 0)) % 4];
+  const bearded = (enemy.id + (ally ? 1 : 0)) % 2 === 0;
 
   useFrame((state, delta) => {
     const body = fighter.current;
@@ -418,7 +510,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) 
       </mesh>
       <mesh position={[0, 1.57, 0]} castShadow>
         <boxGeometry args={[0.47, 0.48, 0.43]} />
-        <meshStandardMaterial color="#c89570" roughness={0.8} />
+        <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
       <mesh position={[-0.1, 1.64, 0.221]}>
         <boxGeometry args={[0.075, 0.07, 0.028]} />
@@ -438,7 +530,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) 
       </mesh>
       <mesh position={[0, 1.57, 0.25]} castShadow>
         <boxGeometry args={[0.07, 0.085, 0.065]} />
-        <meshStandardMaterial color="#c89570" roughness={0.8} />
+        <meshStandardMaterial color={skin} roughness={0.8} />
       </mesh>
       <mesh position={[0, 1.47, 0.227]}>
         <boxGeometry args={[0.13, 0.025, 0.026]} />
@@ -452,6 +544,45 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) 
         <boxGeometry args={[0.54, 0.12, 0.5]} />
         <meshStandardMaterial color="#292b31" metalness={0.18} roughness={0.66} />
       </mesh>
+      <mesh position={[-0.255, 1.58, 0]}>
+        <boxGeometry args={[0.05, 0.34, 0.4]} />
+        <meshStandardMaterial color={hair} roughness={0.95} />
+      </mesh>
+      <mesh position={[0.255, 1.58, 0]}>
+        <boxGeometry args={[0.05, 0.34, 0.4]} />
+        <meshStandardMaterial color={hair} roughness={0.95} />
+      </mesh>
+      {bearded && (
+        <mesh position={[0, 1.4, 0.19]}>
+          <boxGeometry args={[0.34, 0.2, 0.1]} />
+          <meshStandardMaterial color={hair} roughness={0.95} />
+        </mesh>
+      )}
+      <mesh position={[0, 1.62, 0.245]}>
+        <boxGeometry args={[0.05, 0.3, 0.04]} />
+        <meshStandardMaterial color="#aab4b2" metalness={0.8} roughness={0.3} />
+      </mesh>
+      {ally ? (
+        [-1, 1].map((side) => (
+          <mesh key={side} position={[side * 0.31, 1.3, 0]}>
+            <boxGeometry args={[0.36, 0.03, 0.44]} />
+            <meshStandardMaterial color="#d8a73f" metalness={0.8} roughness={0.3} />
+          </mesh>
+        ))
+      ) : (
+        [-1, 1].map((side) => (
+          <group key={side}>
+            <mesh position={[side * 0.26, 1.98, 0]} rotation={[0, 0, -side * 0.6]}>
+              <coneGeometry args={[0.06, 0.28, 6]} />
+              <meshStandardMaterial color="#e9dfc5" roughness={0.6} />
+            </mesh>
+            <mesh position={[side * 0.34, 1.4, 0]}>
+              <coneGeometry args={[0.05, 0.22, 6]} />
+              <meshStandardMaterial color="#c4ccca" metalness={0.7} roughness={0.35} />
+            </mesh>
+          </group>
+        ))
+      )}
       <mesh position={[0, 2.0, -0.02]} castShadow>
         <boxGeometry args={[0.1, 0.2, 0.4]} />
         <meshStandardMaterial color={team.plume} roughness={0.55} />
@@ -527,7 +658,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, onDamageEnemy }) 
           </mesh>
           <mesh position={[0, -0.3, 0.035]} castShadow>
             <boxGeometry args={[0.18, 0.12, 0.2]} />
-            <meshStandardMaterial color="#c89570" roughness={0.8} />
+            <meshStandardMaterial color={skin} roughness={0.8} />
           </mesh>
           <group position={[0, -0.36, 0.06]} rotation={[Math.PI / 2, 0, 0]}>
             <SwordModel scale={0.78} accent={team.accent} />
@@ -646,10 +777,18 @@ function Projectile({ projectile, playerRef, enemiesRef, onDamagePlayer, onDamag
 
 function Bow({ visible, attacking }) {
   const bow = useRef();
-  const attackStart = useRef(0);
-  const drawAmount = useRef(0);
+  const arrow = useRef();
+  const attackStart = useRef(-10);
   const previousAttack = useRef(attacking);
   const { camera } = useThree();
+  const stringLine = useMemo(() => {
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]),
+      new THREE.LineBasicMaterial({ color: "#f2e8cf" }),
+    );
+    line.frustumCulled = false;
+    return line;
+  }, []);
 
   useEffect(() => {
     if (!bow.current) return undefined;
@@ -657,43 +796,60 @@ function Bow({ visible, attacking }) {
     return () => camera.remove(bow.current);
   }, [camera]);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (!bow.current) return;
     if (attacking !== previousAttack.current) {
       previousAttack.current = attacking;
       attackStart.current = state.clock.elapsedTime;
     }
-    const elapsed = state.clock.elapsedTime - attackStart.current;
-    const phase = Math.min(elapsed / 0.3, 1);
-    drawAmount.current = THREE.MathUtils.damp(
-      drawAmount.current,
-      phase < 0.65 ? Math.sin((phase / 0.65) * Math.PI * 0.5) : 0,
-      18,
-      delta,
-    );
-    bow.current.position.x = 0.48 - drawAmount.current * 0.04;
-    bow.current.rotation.z = -0.14 + drawAmount.current * 0.06;
+    const t = state.clock.elapsedTime - attackStart.current;
+    const draw = t < 0.08 ? 0 : Math.min((t - 0.08) / 0.32, 1);
+    const nockZ = -0.13 + draw * 0.34;
+    const pos = stringLine.geometry.attributes.position;
+    pos.setXYZ(0, 0, 0.4, -0.13);
+    pos.setXYZ(1, 0, 0, nockZ);
+    pos.setXYZ(2, 0, -0.4, -0.13);
+    pos.needsUpdate = true;
+    arrow.current.position.z = nockZ;
+    arrow.current.visible = t >= 0.08;
+    bow.current.position.z = -0.85 + Math.max(0, 0.12 - t) * 0.8;
   });
 
   return (
-    <group
-      ref={bow}
-      visible={visible}
-      position={[0.48, -0.46, -0.78]}
-      rotation={[0, 0, -0.14]}
-    >
-      <mesh rotation={[0, 0, Math.PI / 2]}>
-        <torusGeometry args={[0.38, 0.035, 8, 28, Math.PI * 1.5]} />
-        <meshStandardMaterial color="#805a37" roughness={0.7} />
+    <group ref={bow} visible={visible} position={[0.42, -0.4, -0.85]} rotation={[0, 0, -0.1]}>
+      <group rotation={[0, Math.PI / 2, 0]}>
+        <mesh rotation={[0, 0, -Math.PI * 0.4]}>
+          <torusGeometry args={[0.42, 0.025, 8, 24, Math.PI * 0.8]} />
+          <meshStandardMaterial color="#805a37" roughness={0.7} />
+        </mesh>
+      </group>
+      <mesh position={[0, 0, -0.42]}>
+        <boxGeometry args={[0.07, 0.16, 0.07]} />
+        <meshStandardMaterial color="#4a2f1d" roughness={0.8} />
       </mesh>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[0.012, 0.012, 0.72, 6]} />
-        <meshStandardMaterial color="#e7ddca" roughness={0.68} />
-      </mesh>
-      <mesh position={[0, 0, 0.17]} castShadow>
-        <boxGeometry args={[0.12, 0.14, 0.35]} />
+      <mesh position={[0, -0.06, -0.36]}>
+        <boxGeometry args={[0.12, 0.14, 0.12]} />
         <meshStandardMaterial color="#c89570" roughness={0.8} />
       </mesh>
+      <primitive object={stringLine} />
+      <group ref={arrow}>
+        <mesh position={[0, 0, -0.45]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.012, 0.012, 0.9, 6]} />
+          <meshStandardMaterial color="#d8c49a" roughness={0.6} />
+        </mesh>
+        <mesh position={[0, 0, -0.95]} rotation={[-Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.032, 0.11, 6]} />
+          <meshStandardMaterial color="#c4ccca" metalness={0.7} roughness={0.3} />
+        </mesh>
+        <mesh position={[0, 0, -0.06]}>
+          <boxGeometry args={[0.1, 0.008, 0.1]} />
+          <meshStandardMaterial color="#e05060" roughness={0.8} />
+        </mesh>
+        <mesh position={[0, -0.01, 0.05]}>
+          <boxGeometry args={[0.1, 0.1, 0.12]} />
+          <meshStandardMaterial color="#c89570" roughness={0.8} />
+        </mesh>
+      </group>
     </group>
   );
 }
@@ -834,6 +990,28 @@ function PlayerAvatar({ actor, visible, attacking, weapon }) {
         <boxGeometry args={[0.68, 0.18, 0.52]} />
         <meshStandardMaterial color="#513f35" roughness={0.72} />
       </mesh>
+      <mesh position={[-0.275, 1.86, 0]}>
+        <boxGeometry args={[0.05, 0.36, 0.44]} />
+        <meshStandardMaterial color="#3b2a1d" roughness={0.95} />
+      </mesh>
+      <mesh position={[0.275, 1.86, 0]}>
+        <boxGeometry args={[0.05, 0.36, 0.44]} />
+        <meshStandardMaterial color="#3b2a1d" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 1.68, 0.2]}>
+        <boxGeometry args={[0.38, 0.22, 0.1]} />
+        <meshStandardMaterial color="#3b2a1d" roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 1.9, 0.255]}>
+        <boxGeometry args={[0.055, 0.32, 0.04]} />
+        <meshStandardMaterial color="#aab4b2" metalness={0.8} roughness={0.3} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={side} position={[side * 0.34, 1.55, 0]}>
+          <boxGeometry args={[0.38, 0.035, 0.46]} />
+          <meshStandardMaterial color="#d8a73f" metalness={0.8} roughness={0.3} />
+        </mesh>
+      ))}
       <mesh position={[0, 2.3, -0.02]} castShadow>
         <boxGeometry args={[0.11, 0.24, 0.46]} />
         <meshStandardMaterial color="#3aa0ff" roughness={0.55} />
@@ -994,22 +1172,9 @@ function Sword({ attacking, visible }) {
 
   return (
     <group ref={sword} visible={visible}>
-      <mesh position={[0, -0.28, 0]} rotation={[0.18, 0, -0.16]} castShadow>
-        <capsuleGeometry args={[0.075, 0.43, 4, 8]} />
-        <meshStandardMaterial color="#c59357" roughness={0.63} />
-      </mesh>
-      <mesh position={[0, -0.04, 0]} rotation={[0.18, 0, -0.16]}>
-        <boxGeometry args={[0.38, 0.055, 0.07]} />
-        <meshStandardMaterial color="#9b713e" metalness={0.6} roughness={0.38} />
-      </mesh>
-      <mesh geometry={blade} position={[0, 0.02, 0.035]} rotation={[0.18, 0, -0.16]} castShadow>
-        <meshStandardMaterial
-          color="#e4edeb"
-          metalness={0.9}
-          roughness={0.16}
-          envMapIntensity={1.4}
-        />
-      </mesh>
+      <group position={[0, -0.4, 0]} rotation={[0.18, 0, -0.16]}>
+        <SwordModel scale={1.12} accent="#7cc4ff" />
+      </group>
       <mesh position={[0, -0.53, 0]} rotation={[0, 0, -0.14]} castShadow>
         <capsuleGeometry args={[0.12, 0.37, 5, 10]} />
         <meshStandardMaterial color="#c89570" roughness={0.82} />
@@ -1068,6 +1233,8 @@ function GameScene({
   );
   const projectilesId = useRef(0);
   const [projectiles, setProjectiles] = useState([]);
+  const [effects, setEffects] = useState([]);
+  const effectId = useRef(0);
   const attackTime = useRef(0);
   const nextAttackTime = useRef(0);
   const activeSwing = useRef({ elapsed: 0, hit: false });
@@ -1078,6 +1245,7 @@ function GameScene({
   const damageEnemy = useCallback((target, damage) => {
     if (target.health <= 0) return;
     target.health = Math.max(0, target.health - damage);
+    setEffects((current) => [...current.slice(-12), { id: ++effectId.current, damage, position: [target.position.x, target.position.y + 1.3, target.position.z] }]);
     setEnemyHealth((current) =>
       current.map((enemy) =>
         enemy.id === target.id ? { ...enemy, health: target.health } : enemy,
@@ -1129,6 +1297,11 @@ function GameScene({
       if (best) {
         me.yaw = Math.atan2(-(best.position.x - me.x), -(best.position.z - me.z));
         me.pitch = weapon === "bow" ? Math.atan2(-0.43 + 0.0039 * bestDist * bestDist, bestDist) : 0;
+        if (weapon === "sword" && bestDist > 1.8) {
+          const step = Math.min(0.9, bestDist - 1.8);
+          me.x += ((best.position.x - me.x) / bestDist) * step;
+          me.z += ((best.position.z - me.z) / bestDist) * step;
+        }
         cameraOrbit.current.yaw = me.yaw;
         if (weapon === "bow") cameraOrbit.current.pitch = THREE.MathUtils.clamp(me.pitch, -0.28, 0.55);
       }
@@ -1416,6 +1589,8 @@ function GameScene({
       />
       <Terrain mapId={mapId} />
       <Clouds />
+      <SpawnFlag x={0} z={-32} color="#d8283f" />
+      <SpawnFlag x={0} z={11} color="#2f6fe0" />
       <mesh position={[-28, 5, -42]} castShadow>
         <coneGeometry args={[12, 12, 7]} />
         <meshStandardMaterial color={mapId === "desert" ? "#a98b5e" : "#8c9c60"} roughness={1} />
@@ -1449,6 +1624,13 @@ function GameScene({
       />
       <Sword attacking={attackId} visible={viewMode === "first" && weapon === "sword"} />
       <Bow attacking={attackId} visible={viewMode === "first" && weapon === "bow"} />
+      {effects.map((effect) => (
+        <HitEffect
+          key={effect.id}
+          effect={effect}
+          onDone={(id) => setEffects((current) => current.filter((item) => item.id !== id))}
+        />
+      ))}
       {projectiles.map((projectile) => (
         <Projectile
           key={projectile.id}
@@ -1654,6 +1836,7 @@ export default function App() {
         </button>
       </div>
       <div className="crosshair" aria-hidden="true"><span /></div>
+      {playerHealth > 0 && playerHealth < 100 && <div key={playerHealth} className="hurt-flash" aria-hidden="true" />}
       <div className="bottom-hint">{text.move} <i /> {text.jump} <i /> {text.look} <i /> {text.attack} <i /> {text.weaponKeys} <i /> {text.cameraKey}</div>
 
       {!menuOpen && !finished && (
@@ -1801,7 +1984,7 @@ export default function App() {
       )}
       {finished && (
         <div className="end-overlay">
-          <div className="end-card">
+          <div className={`end-card ${playerHealth <= 0 ? "defeat" : "victory"}`}>
             <strong>{playerHealth <= 0 ? text.defeat : text.victory}</strong>
             <span>{playerHealth <= 0 ? text.lost : text.won}</span>
             <button onClick={restart}>{text.playAgain}</button>
