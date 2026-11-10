@@ -1,262 +1,220 @@
+@import url("https://fonts.googleapis.com/css2?family=Lilita+One&family=Rubik:wght@600;800;900&family=Nunito:wght@600;700;800;900&display=swap");
+
+/* =====================================================================
+   JANG MAYDONI — quvnoq "multfilm" mavzusi (TO'LIQ almashtirish)
+   Eski CSS faylingiz o'rniga shuni qo'ying.
+   Uslub: yorqin osmon ko'k, quyosh sariq, qalin to'q-ko'k chiziqlar,
+   yumaloq burchaklar, jamoa ranglari: moviy va marjon-qizil.
+   ===================================================================== */
+
 :root {
-  font-family: "Segoe UI", system-ui, sans-serif;
+  --navy: #0b2152;
+  --navy-2: #17357c;
+  --glass: rgb(11 33 82 / 78%);
+  --sun: #ffc21f;
+  --sun-hi: #ffe27a;
+  --sun-d: #e48a00;
+  --sky: #3cc8ff;
+  --sky-d: #1a8fd6;
+  --blue: #4a86ff;
+  --coral: #ff5668;
+  --coral-d: #c92a42;
+  --lime: #5fdc6e;
+  --lime-d: #2a9d45;
+  --cream: #fff6dc;
+  --display: "Lilita One", "Rubik", "Trebuchet MS", "Arial Rounded MT Bold", system-ui, sans-serif;
+  --display-weight: 400;
+  --ui: "Nunito", "Segoe UI", system-ui, sans-serif;
+  --ease: cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  font-family: var(--ui);
   color: #fff;
-  background: #79b8cb;
+  background: var(--navy);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-html,
-body,
-#root {
+html, body, #root {
   width: 100%;
   height: 100%;
   margin: 0;
   overflow: hidden;
 }
+body { min-width: 320px; min-height: 100vh; }
+button, select { font: inherit; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; }
 
-body {
-  min-width: 320px;
-  min-height: 100vh;
-}
+.game { position: relative; width: 100%; height: 100%; overflow: hidden; background: #8bd5f1; }
+.game canvas { display: block; touch-action: none; }
 
-button,
-select {
-  font: inherit;
-}
-
-button:focus-visible,
-select:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 3px;
-}
-
-.game {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: #8bd5f1;
-}
-
-.game canvas {
-  display: block;
-  touch-action: none;
-}
+/* ============================================================ HUD */
 
 .hud {
   position: absolute;
   z-index: 1;
-  top: 20px;
+  top: 18px;
   left: 50%;
   display: grid;
-  grid-template-columns: minmax(150px, 1fr) 64px minmax(150px, 1fr);
+  grid-template-columns: minmax(150px, 1fr) 72px minmax(150px, 1fr);
   align-items: center;
-  gap: 8px;
-  width: min(590px, calc(100% - 340px));
+  gap: 10px;
+  width: min(620px, calc(100% - 340px));
   min-width: 400px;
   transform: translateX(-50%);
   pointer-events: none;
 }
 
-.health-card,
-.score-card,
-.enemy-picker,
-.view-toggle,
-.weapon-toggle,
-.bottom-hint {
-  border: 1px solid rgb(255 255 255 / 28%);
-  background: rgb(20 30 31 / 76%);
-  backdrop-filter: blur(8px);
+.health-card, .score-card, .enemy-picker, .view-toggle, .weapon-toggle, .bottom-hint,
+.open-menu-button, .coin-chip {
+  border: 3px solid var(--navy);
+  border-radius: 14px;
+  background: var(--glass);
+  box-shadow: 0 4px 0 rgb(0 0 0 / 30%), inset 0 0 0 2px rgb(255 255 255 / 14%);
+  backdrop-filter: blur(6px);
 }
 
-.health-card,
-.score-card {
-  padding: 9px 12px;
-  border-radius: 6px;
-}
-
-.health-card {
-  position: relative;
-  overflow: hidden;
-}
-
-.player-card::before,
-.enemy-card::before {
+.health-card { position: relative; overflow: hidden; padding: 8px 12px 10px; }
+.player-card::before, .enemy-card::before {
   position: absolute;
   inset: 0 auto 0 0;
-  width: 2px;
-  background: #45aaff;
+  width: 6px;
+  background: var(--blue);
   content: "";
 }
-
-.enemy-card::before {
-  background: #f05b55;
-}
+.enemy-card::before { background: var(--coral); }
 
 .health-label {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 7px;
-  color: #e6eceb;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  margin-bottom: 5px;
+  padding-left: 4px;
+  color: var(--cream);
+  font-family: var(--ui);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
 }
-
-.health-label strong {
-  color: #fff;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-}
+.health-label strong { color: #fff; font-family: var(--display); font-size: 18px; font-weight: var(--display-weight); letter-spacing: 0.02em; }
 
 .health-track {
-  height: 5px;
+  height: 12px;
   overflow: hidden;
-  border-radius: 2px;
-  background: rgb(255 255 255 / 20%);
+  border: 2px solid var(--navy);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 40%);
 }
-
-.health-fill {
-  height: 100%;
-  border-radius: inherit;
-  transition: width 240ms ease;
+.health-fill { position: relative; height: 100%; border-radius: 999px; transition: width 260ms ease; }
+.health-fill::after {
+  position: absolute;
+  inset: 1px 3px auto;
+  height: 38%;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 45%);
+  content: "";
 }
-
-.blue-fill {
-  background: #48a9f5;
-}
-
-.red-fill {
-  background: #ed625a;
-}
+.blue-fill { background: linear-gradient(#78b0ff, #3a74f0); }
+.red-fill  { background: linear-gradient(#ff8a98, #f03a52); }
+.hud-online .health-card { padding-left: 14px; }
 
 .score-card {
   display: grid;
-  min-height: 53px;
+  min-height: 60px;
   justify-items: center;
-  gap: 1px;
-  padding: 6px 3px;
+  gap: 0;
+  padding: 5px 4px;
+  border-color: var(--sun-d);
+  background: linear-gradient(#17357c, #0b2152);
   text-align: center;
 }
-
-.score-card span {
-  color: #d7dfdc;
-  font-size: 7px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-}
-
+.score-card span { color: var(--sun-hi); font-size: 9px; font-weight: 900; letter-spacing: 0.08em; }
 .score-card strong {
-  color: #fff;
-  font-size: 23px;
-  line-height: 1.1;
+  color: var(--sun);
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: var(--display-weight);
+  line-height: 1.05;
+  -webkit-text-stroke: 2px var(--navy);
+  paint-order: stroke fill;
 }
 
 .open-menu-button {
   position: absolute;
   z-index: 3;
-  top: 20px;
-  left: 20px;
+  top: 18px;
+  left: 18px;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 11px;
-  border: 1px solid rgb(255 255 255 / 28%);
-  border-radius: 6px;
-  background: rgb(20 30 31 / 76%);
+  gap: 8px;
+  padding: 8px 14px;
   color: #fff;
-  font-size: 12px;
-  font-weight: 700;
+  font-family: var(--display);
+  font-size: 15px;
+  letter-spacing: 0.04em;
   cursor: pointer;
-  backdrop-filter: blur(8px);
+  transition: transform 140ms var(--ease), background 140ms;
 }
+.open-menu-button:hover { background: var(--navy-2); transform: translateY(-2px); }
+.open-menu-button:active { transform: translateY(2px); box-shadow: 0 1px 0 rgb(0 0 0 / 30%); }
 
-.open-menu-button:hover {
-  background: rgb(20 30 31 / 92%);
+.coin-chip {
+  position: absolute;
+  z-index: 3;
+  top: 66px;
+  left: 18px;
+  padding: 4px 14px 4px 10px;
+  border-radius: 999px;
+  color: var(--sun-hi);
+  font-family: var(--display);
+  font-size: 17px;
+  pointer-events: none;
 }
 
 .enemy-picker {
   position: absolute;
   z-index: 3;
-  top: 20px;
-  left: 20px;
+  top: 18px;
+  left: 18px;
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 7px 9px;
-  border-radius: 6px;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
 }
 
-.enemy-picker select {
-  min-width: 48px;
-  padding: 4px 6px;
-  border: 1px solid rgb(255 255 255 / 28%);
-  border-radius: 4px;
-  background: #273538;
-  color: #fff;
-  cursor: pointer;
-}
+.view-toggle, .weapon-toggle { position: absolute; z-index: 3; display: flex; gap: 3px; padding: 4px; }
+.view-toggle { top: 18px; right: 18px; }
+.weapon-toggle { right: 18px; bottom: 70px; }
 
-.view-toggle {
-  position: absolute;
-  z-index: 3;
-  top: 20px;
-  right: 20px;
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 6px;
-}
-
-.view-toggle button,
-.weapon-toggle button {
-  padding: 6px 9px;
+.view-toggle button, .weapon-toggle button {
+  padding: 7px 12px;
   border: 0;
-  border-radius: 4px;
+  border-radius: 10px;
   background: transparent;
-  color: #e8eeee;
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--cream);
+  font-size: 13px;
+  font-weight: 800;
   cursor: pointer;
+  transition: background 140ms, transform 140ms var(--ease);
 }
-
-.view-toggle button:hover,
-.weapon-toggle button:hover {
-  background: rgb(255 255 255 / 12%);
+.view-toggle button:hover, .weapon-toggle button:hover { background: rgb(255 255 255 / 14%); }
+.view-toggle button.selected, .weapon-toggle button.selected {
+  background: linear-gradient(var(--sun-hi), var(--sun) 55%, var(--sun-d));
+  color: var(--navy);
+  box-shadow: 0 2px 0 rgb(0 0 0 / 30%);
 }
-
-.view-toggle button.selected,
-.weapon-toggle button.selected {
-  background: #397fa8;
-  color: #fff;
-}
-
-.weapon-toggle {
-  position: absolute;
-  z-index: 3;
-  right: 20px;
-  bottom: 70px;
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 6px;
-}
-
 .weapon-toggle kbd {
-  margin-left: 4px;
-  color: #c9d2d1;
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: rgb(0 0 0 / 30%);
+  color: inherit;
   font: inherit;
+  font-size: 10px;
 }
 
 .crosshair {
@@ -264,21 +222,16 @@ select:focus-visible {
   top: 50%;
   left: 50%;
   display: grid;
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   place-items: center;
   transform: translate(-50%, -50%);
-  border: 1px solid rgb(255 255 255 / 85%);
+  border: 3px solid #fff;
   border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--navy), inset 0 0 0 2px var(--navy);
   pointer-events: none;
 }
-
-.crosshair span {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #fff;
-}
+.crosshair span { width: 4px; height: 4px; border-radius: 50%; background: var(--sun); }
 
 .bottom-hint {
   position: absolute;
@@ -287,28 +240,75 @@ select:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  gap: 10px;
   width: max-content;
   max-width: calc(100% - 24px);
-  padding: 8px 12px;
+  padding: 7px 16px;
   transform: translateX(-50%);
-  border-radius: 6px;
-  color: #f1f3f0;
-  font-size: 10px;
+  border-radius: 999px;
+  color: var(--cream);
+  font-size: 12px;
+  font-weight: 800;
   pointer-events: none;
 }
+.bottom-hint i { width: 5px; height: 5px; flex: 0 0 auto; border-radius: 50%; background: var(--sun); }
 
-.bottom-hint i {
-  width: 3px;
-  height: 3px;
-  flex: 0 0 auto;
-  border-radius: 50%;
-  background: #b7c5bf;
+.hurt-flash {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 50%, rgb(255 60 80 / 60%) 100%);
+  pointer-events: none;
+  animation: hurt 480ms ease-out both;
 }
 
-.mobile-controls {
-  display: none;
+.kill-feed {
+  position: absolute;
+  z-index: 3;
+  top: 116px;
+  right: 18px;
+  display: grid;
+  gap: 5px;
+  justify-items: end;
+  pointer-events: none;
 }
+.kill-feed > div {
+  padding: 4px 12px;
+  border: 2px solid var(--navy);
+  border-radius: 999px;
+  background: var(--glass);
+  color: var(--cream);
+  font-size: 13px;
+  font-weight: 800;
+  animation: feed-in 260ms var(--ease) both;
+}
+.respawn-banner {
+  position: absolute;
+  z-index: 3;
+  top: 36%;
+  left: 50%;
+  padding: 10px 30px;
+  transform: translateX(-50%);
+  border: 3px solid var(--navy);
+  border-radius: 16px;
+  background: linear-gradient(#ff8a98, var(--coral));
+  color: #fff;
+  font-family: var(--display);
+  font-size: clamp(18px, 4vw, 28px);
+  letter-spacing: 0.06em;
+  -webkit-text-stroke: 2px var(--navy);
+  paint-order: stroke fill;
+  box-shadow: 0 5px 0 rgb(0 0 0 / 35%);
+  pointer-events: none;
+  animation: breathe 1.3s ease-in-out infinite;
+}
+
+/* ====================================================== Sensorli boshqaruv */
+
+.mobile-controls { display: none; }
+.touch-zone { display: none; }
+
+/* =============================================================== MENYU */
 
 .menu-overlay {
   position: absolute;
@@ -319,277 +319,380 @@ select:focus-visible {
   overflow-y: auto;
   place-items: center;
   background:
-    radial-gradient(ellipse at 50% 38%, rgb(91 93 112 / 48%), transparent 50%),
-    radial-gradient(ellipse at 8% 85%, rgb(36 57 60 / 75%), transparent 36%),
-    radial-gradient(ellipse at 92% 78%, rgb(28 43 48 / 80%), transparent 38%),
-    linear-gradient(160deg, #34343e 0%, #171a22 54%, #101619 100%);
+    radial-gradient(ellipse at 50% 0%, rgb(60 200 255 / 35%), transparent 60%),
+    rgb(8 24 64 / 62%);
+  backdrop-filter: blur(5px);
+}
+/* Asosiy menyuda 3D sahna ochiq ko'rinadi, tugmalar chap tomonda */
+.menu-overlay:has(.main-menu-card) {
+  place-items: center start;
+  padding-left: clamp(18px, 6vw, 90px);
+  background:
+    linear-gradient(90deg, rgb(6 20 56 / 88%) 0%, rgb(8 28 72 / 58%) 34%, rgb(8 28 72 / 8%) 66%, transparent 100%);
+  backdrop-filter: none;
 }
 
 .menu-card {
+  position: relative;
   width: min(900px, 100%);
-  padding: 36px;
-  border: 2px solid #111019;
-  border-radius: 10px;
-  background: linear-gradient(115deg, #353142, #55515e 48%, #353142);
+  padding: 34px;
+  border: 4px solid var(--navy);
+  border-radius: 24px;
+  background: linear-gradient(180deg, #2a55b8, #1b3f93 40%, #142f73);
   color: #fff;
-  box-shadow: 0 18px 0 rgb(9 9 15 / 52%), 0 30px 90px rgb(0 0 0 / 55%), inset 0 0 0 5px rgb(14 13 22 / 50%);
+  box-shadow:
+    0 8px 0 rgb(0 0 0 / 40%),
+    0 30px 70px rgb(0 0 0 / 45%),
+    inset 0 0 0 3px rgb(255 255 255 / 20%),
+    inset 0 -24px 40px rgb(0 0 0 / 18%);
+  animation: pop-in 380ms var(--ease) both;
 }
 
 .main-menu-card {
   display: grid;
-  width: min(430px, 100%);
-  gap: 14px;
-  padding: 28px;
+  width: min(360px, 100%);
+  gap: 11px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.main-menu-heading {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
+.main-menu-heading { display: grid; justify-items: start; gap: 6px; margin-bottom: 12px; }
 .main-menu-heading h1 {
   margin: 0;
-  font-size: clamp(22px, 5vw, 30px);
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-shadow: 0 3px 0 #111019;
+  color: #fff;
+  font-family: var(--display);
+  font-size: clamp(38px, 7vw, 58px);
+  font-weight: var(--display-weight);
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  -webkit-text-stroke: 7px var(--navy);
+  paint-order: stroke fill;
+  text-shadow: 0 6px 0 rgb(0 0 0 / 35%);
+  transform: rotate(-3deg);
+  transform-origin: left center;
+  background: linear-gradient(#fff 0 45%, var(--sun-hi) 45%);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
-
 .menu-mark {
   display: grid;
-  width: 42px;
-  height: 42px;
-  flex: 0 0 auto;
+  width: 46px;
+  height: 38px;
   place-items: center;
-  border: 1px solid rgb(255 255 255 / 28%);
-  border-radius: 5px;
-  background: linear-gradient(#3497f4, #1261b1);
-  font-size: 13px;
-  font-weight: 700;
-  box-shadow: inset 0 0 0 3px rgb(8 35 81 / 43%), 0 3px 0 #102444;
+  border: 3px solid var(--navy);
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(var(--sun-hi), var(--sun-d));
+  color: var(--navy);
+  font-family: var(--display);
+  font-size: 16px;
+  box-shadow: 0 3px 0 rgb(0 0 0 / 35%);
+  transform: rotate(-6deg);
 }
 
-.menu-nav-button,
-.menu-back-button,
-.menu-start {
-  min-height: 74px;
-  padding: 14px 20px;
-  clip-path: polygon(0 10px, 10px 0, calc(100% - 10px) 0, 100% 10px, 100% calc(100% - 10px), calc(100% - 10px) 100%, 10px 100%, 0 calc(100% - 10px));
-  border: 2px solid #080f1c;
-  background: linear-gradient(#061a38, #031027);
+.menu-nav-button, .menu-back-button, .menu-start {
+  position: relative;
+  min-height: 54px;
+  padding: 10px 20px;
+  border: 3px solid var(--navy);
+  border-radius: 14px;
+  background: linear-gradient(#27468f, #14306f);
   color: #fff;
-  font-size: clamp(17px, 3vw, 23px);
-  font-weight: 800;
-  letter-spacing: 0.025em;
-  text-align: center;
-  text-shadow: 0 2px #07111f;
+  font-family: var(--display);
+  font-size: clamp(17px, 2.6vw, 21px);
+  font-weight: var(--display-weight);
+  letter-spacing: 0.04em;
+  text-align: left;
   cursor: pointer;
-  box-shadow: inset 0 0 0 3px rgb(28 60 100 / 48%), 0 5px 0 #080b14;
-  transition: filter 120ms ease, transform 120ms ease;
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 14%), 0 5px 0 rgb(0 0 0 / 38%);
+  transition: transform 150ms var(--ease), filter 150ms, box-shadow 150ms;
 }
-
-.menu-nav-button:hover,
-.menu-back-button:hover,
-.menu-start:hover {
-  filter: brightness(1.17);
-  transform: translateY(-1px);
-}
+.menu-nav-button:hover, .menu-back-button:hover, .menu-start:hover { filter: brightness(1.15); transform: translateX(4px); }
+.menu-nav-button:active, .menu-back-button:active, .menu-start:active { transform: translateY(3px); box-shadow: inset 0 0 0 2px rgb(255 255 255 / 14%), 0 2px 0 rgb(0 0 0 / 38%); }
 
 .menu-nav-button.primary {
-  min-height: 88px;
-  border-color: #101f3e;
-  background: linear-gradient(#288ee9, #1260ae);
-  font-size: clamp(23px, 4vw, 30px);
-  box-shadow: inset 0 0 0 4px rgb(104 190 255 / 42%), 0 6px 0 #08152a;
+  min-height: 74px;
+  padding-left: 26px;
+  border-radius: 18px;
+  background: linear-gradient(var(--sun-hi), var(--sun) 50%, var(--sun-d));
+  color: var(--navy);
+  font-size: clamp(26px, 4vw, 34px);
+  text-shadow: 0 2px 0 rgb(255 255 255 / 45%);
+  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 40%), 0 7px 0 rgb(120 60 0 / 55%);
+  overflow: hidden;
+}
+.menu-nav-button.primary::before { margin-right: 12px; font-size: 0.8em; content: "▶"; }
+.menu-nav-button.primary::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 38%, rgb(255 255 255 / 55%) 50%, transparent 62%);
+  transform: translateX(-130%);
+  content: "";
+  animation: shine 3.4s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .main-language {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 10px;
-  margin-top: 5px;
-  color: #e5e3eb;
-  font-size: 12px;
-}
-
-.main-language select,
-.team-count select,
-.setting-row select {
-  padding: 8px 9px;
-  border: 2px solid #161321;
-  border-radius: 4px;
-  background: #292536;
+  margin-top: 4px;
   color: #fff;
-  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+  text-shadow: 0 2px 0 var(--navy);
 }
 
-.settings-card {
-  position: relative;
-  padding: 42px 38px 30px;
-}
-
-.settings-ribbon {
-  width: min(440px, 94%);
-  margin: -61px auto 28px;
-  padding: 14px 12px;
-  border: 3px solid #5b161d;
-  border-radius: 6px;
-  background: linear-gradient(#f0444c, #c71d30);
-  color: #fff;
-  font-size: clamp(17px, 3vw, 23px);
+.main-language select, .team-count select, .setting-row select, .enemy-picker select {
+  padding: 8px 12px;
+  border: 3px solid var(--navy);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--navy);
   font-weight: 900;
-  letter-spacing: 0.04em;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgb(0 0 0 / 30%);
+}
+
+/* ---------- Sarlavha lentasi (ribbon) */
+
+.settings-card { padding: 44px 36px 28px; }
+.settings-ribbon {
+  width: min(460px, 94%);
+  margin: -64px auto 26px;
+  padding: 10px 14px;
+  border: 4px solid var(--navy);
+  border-radius: 16px;
+  background: linear-gradient(var(--sun-hi), var(--sun) 55%, var(--sun-d));
+  color: #fff;
+  font-family: var(--display);
+  font-size: clamp(20px, 3.4vw, 28px);
+  font-weight: var(--display-weight);
+  letter-spacing: 0.06em;
   text-align: center;
-  text-shadow: 0 2px #64101b;
-  box-shadow: 0 5px 0 #5c1720, inset 0 0 0 3px rgb(255 133 127 / 38%);
+  -webkit-text-stroke: 5px var(--navy);
+  paint-order: stroke fill;
+  box-shadow: 0 6px 0 rgb(0 0 0 / 38%), inset 0 0 0 3px rgb(255 255 255 / 40%);
 }
 
 .factions-label {
   width: fit-content;
-  margin: 0 auto 18px;
-  padding: 7px 26px;
-  clip-path: polygon(0 0, 100% 0, 96% 80%, 50% 100%, 4% 80%);
-  background: linear-gradient(#9b5bff, #5c2bb0);
+  margin: 0 auto 16px;
+  padding: 5px 24px;
+  border: 3px solid var(--navy);
+  border-radius: 999px;
+  background: linear-gradient(#a98bff, #6a3fd6);
   color: #fff;
-  font-size: 13px;
-  font-weight: 800;
+  font-size: 14px;
+  font-weight: 900;
   text-align: center;
-  text-shadow: 0 1px #32125e;
+  box-shadow: 0 3px 0 rgb(0 0 0 / 35%);
 }
 
-.team-settings {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 64px minmax(0, 1fr);
-  align-items: center;
-  gap: 14px;
-}
-
+.team-settings { display: grid; grid-template-columns: minmax(0, 1fr) 70px minmax(0, 1fr); align-items: center; gap: 14px; }
 .team-count {
   display: grid;
   min-height: 150px;
   justify-items: center;
   align-content: center;
   gap: 9px;
-  border: 3px solid #14111d;
-  border-radius: 8px;
-  background: linear-gradient(145deg, #353243, #272533);
-  color: #f3f1f6;
-  font-size: 12px;
-  font-weight: 700;
+  border: 3px solid var(--navy);
+  border-radius: 18px;
+  background: rgb(0 0 0 / 22%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
   text-align: center;
-  box-shadow: inset 0 0 0 3px rgb(160 160 185 / 17%), 0 4px 0 #17141f;
+  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 10%);
 }
-
 .team-emblem {
   display: grid;
   width: 58px;
-  height: 75px;
+  height: 72px;
   place-items: center;
-  clip-path: polygon(0 0, 100% 0, 100% 76%, 50% 100%, 0 76%);
-  font-size: 34px;
-  text-shadow: 0 2px rgb(0 0 0 / 30%);
+  clip-path: polygon(0 0, 100% 0, 100% 74%, 50% 100%, 0 74%);
+  font-size: 32px;
 }
-
-.blue-team .team-emblem {
-  background: linear-gradient(#36a4ff, #0756cb);
-  color: #a7d7ff;
-}
-
-.red-team .team-emblem {
-  background: linear-gradient(#ff5661, #b80f28);
-  color: #ffd1d5;
-}
-
-.team-count select {
-  min-width: 80px;
-  font-size: 17px;
-  font-weight: 800;
-  text-align: center;
-}
-
+.blue-team .team-emblem { background: linear-gradient(#8cc0ff, #2f69e0); color: #fff; }
+.red-team .team-emblem { background: linear-gradient(#ff8f9d, #e03550); color: #fff; }
+.team-count select { min-width: 84px; font-family: var(--display); font-size: 20px; font-weight: var(--display-weight); text-align: center; }
 .versus-mark {
-  color: #f3d9a1;
-  font-size: 17px;
-  font-weight: 900;
+  color: var(--sun);
+  font-family: var(--display);
+  font-size: 26px;
   text-align: center;
-  text-shadow: 0 2px #19151f;
+  -webkit-text-stroke: 4px var(--navy);
+  paint-order: stroke fill;
 }
 
-.settings-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 22px;
-}
+.settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 22px; }
+.setting-row { display: grid; gap: 6px; color: #fff; font-size: 13px; font-weight: 900; }
 
-.setting-row {
-  display: grid;
-  gap: 7px;
-  color: #f0eef4;
-  font-size: 12px;
-  font-weight: 700;
-}
+.settings-actions { display: flex; justify-content: space-between; gap: 16px; margin-top: 22px; }
+.settings-actions .menu-back-button, .settings-actions .menu-start { width: min(250px, 50%); min-height: 58px; font-size: 20px; text-align: center; }
+.settings-actions .menu-back-button:hover, .settings-actions .menu-start:hover { transform: translateY(-2px); }
 
-.settings-actions {
+.menu-back-button { background: linear-gradient(#7fdcff, var(--sky) 45%, var(--sky-d)); color: var(--navy); text-shadow: 0 2px 0 rgb(255 255 255 / 40%); }
+.menu-start { background: linear-gradient(#9af0a2, var(--lime) 45%, var(--lime-d)); color: var(--navy); text-shadow: 0 2px 0 rgb(255 255 255 / 40%); }
+
+.controls-card { width: min(540px, 100%); padding-top: 44px; }
+.controls-card p { margin: 12px 0; color: #fff; font-size: 15px; font-weight: 700; line-height: 1.6; text-align: center; }
+.controls-card .menu-back-button { width: 100%; min-height: 54px; margin-top: 12px; text-align: center; }
+
+/* ---------- Xarita va jamoa soni */
+
+.maps-card { width: min(840px, 100%); padding-top: 44px; }
+.section-label {
   display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  margin-top: 23px;
-}
-
-.settings-actions .menu-back-button,
-.settings-actions .menu-start {
-  width: min(240px, 50%);
-  min-height: 60px;
-  font-size: 18px;
-}
-
-.menu-back-button {
-  background: linear-gradient(#258be0, #1157a2);
-}
-
-.menu-start {
-  background: linear-gradient(#f0444c, #c71d30);
-  box-shadow: inset 0 0 0 3px rgb(255 142 142 / 35%), 0 5px 0 #651620;
-}
-
-.controls-card {
-  width: min(540px, 100%);
-  padding-top: 40px;
-}
-
-.controls-card p {
-  margin: 12px 0;
-  color: #f0eef4;
-  font-size: 14px;
-  line-height: 1.6;
-  text-align: center;
-}
-
-.controls-card .menu-back-button {
-  width: 100%;
-  min-height: 56px;
-  margin-top: 12px;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0 9px;
+  color: var(--sun-hi);
+  font-family: var(--display);
   font-size: 17px;
+  letter-spacing: 0.06em;
+  text-shadow: 0 2px 0 var(--navy);
 }
+.section-label::after { flex: 1; height: 4px; border-radius: 4px; background: rgb(255 255 255 / 18%); content: ""; }
 
-.menu-start:hover {
-  background: linear-gradient(#ff5a62, #d92338);
+.map-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.map-card {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 3px solid var(--navy);
+  border-radius: 18px;
+  background: rgb(0 0 0 / 22%);
+  color: #fff;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgb(0 0 0 / 35%);
+  transition: transform 180ms var(--ease), background 180ms;
 }
-
-.menu-start:focus-visible,
-.menu-back-button:focus-visible,
-.menu-nav-button:focus-visible {
-  outline: 3px solid #fff;
-  outline-offset: 3px;
+.map-card:hover { transform: translateY(-4px) rotate(-0.6deg); }
+.map-card.selected {
+  border-color: var(--sun);
+  background: rgb(255 194 31 / 22%);
+  box-shadow: 0 0 0 3px var(--navy), 0 0 26px rgb(255 194 31 / 55%), 0 4px 0 rgb(0 0 0 / 35%);
 }
+.map-card.selected::after {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 3px solid var(--navy);
+  border-radius: 50%;
+  background: var(--lime);
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 900;
+  content: "✓";
+}
+.map-preview { display: block; height: 96px; border: 2px solid var(--navy); border-radius: 12px; }
+.preview-meadow {
+  background:
+    radial-gradient(circle at 25% 108%, #4fb34a 0 38%, transparent 39%),
+    radial-gradient(circle at 78% 112%, #6fcf4f 0 44%, transparent 45%),
+    linear-gradient(#6fd0ff 0 58%, #a8e060 58%);
+}
+.preview-desert {
+  background:
+    radial-gradient(circle at 28% 108%, #f0b858 0 40%, transparent 41%),
+    radial-gradient(circle at 80% 112%, #e8a848 0 45%, transparent 46%),
+    linear-gradient(#ffd9a0 0 58%, #f4cf7e 58%);
+}
+.preview-snow {
+  background:
+    radial-gradient(circle at 28% 108%, #ffffff 0 40%, transparent 41%),
+    radial-gradient(circle at 80% 112%, #d4ecff 0 45%, transparent 46%),
+    linear-gradient(#9fd4ff 0 58%, #eaf6ff 58%);
+}
+.map-info { display: grid; gap: 2px; }
+.map-name { font-family: var(--display); font-size: 18px; letter-spacing: 0.03em; }
+.map-desc { font-size: 12px; font-weight: 700; line-height: 1.35; opacity: 0.85; }
 
-.start-overlay,
-.end-overlay {
+.count-row { display: grid; gap: 8px; margin-bottom: 12px; }
+.count-label { font-family: var(--display); font-size: 16px; letter-spacing: 0.04em; text-shadow: 0 2px 0 var(--navy); }
+.count-row.blue .count-label { color: #9cc6ff; }
+.count-row.red .count-label { color: #ffa3af; }
+.count-chips { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
+.count-chip {
+  min-height: 46px;
+  border: 3px solid var(--navy);
+  border-radius: 12px;
+  background: rgb(0 0 0 / 28%);
+  color: #fff;
+  font-family: var(--display);
+  font-size: 18px;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgb(0 0 0 / 35%);
+  transition: transform 140ms var(--ease);
+}
+.count-chip:hover { transform: translateY(-3px); }
+.count-row.blue .count-chip.selected { background: linear-gradient(#8cc0ff, #3a74f0); }
+.count-row.red .count-chip.selected { background: linear-gradient(#ff8f9d, #f03a52); }
+
+/* ---------- Magazin */
+
+.shop-card { width: min(800px, 100%); padding-top: 44px; }
+.shop-coins {
+  margin-bottom: 4px;
+  color: var(--sun);
+  font-family: var(--display);
+  font-size: 32px;
+  text-align: center;
+  -webkit-text-stroke: 5px var(--navy);
+  paint-order: stroke fill;
+}
+.shop-card .shop-hint { margin: 0 0 16px; font-size: 13px; font-weight: 700; text-align: center; opacity: 0.9; }
+.shop-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.shop-item {
+  display: grid;
+  gap: 5px;
+  justify-items: center;
+  padding: 12px 8px 10px;
+  border: 3px solid var(--navy);
+  border-radius: 18px;
+  background: rgb(0 0 0 / 22%);
+  color: #fff;
+  text-align: center;
+  box-shadow: 0 4px 0 rgb(0 0 0 / 35%);
+  transition: transform 180ms var(--ease);
+}
+.shop-item:hover { transform: translateY(-4px); }
+.shop-item.selected { border-color: var(--sun); background: rgb(255 194 31 / 20%); box-shadow: 0 0 0 3px var(--navy), 0 0 24px rgb(255 194 31 / 50%); }
+.weapon-icon { width: 64px; height: 64px; filter: drop-shadow(0 4px 0 rgb(0 0 0 / 35%)); transition: transform 240ms var(--ease); }
+.shop-item:hover .weapon-icon { transform: rotate(-10deg) scale(1.12); }
+.shop-name { font-family: var(--display); font-size: 18px; letter-spacing: 0.03em; }
+.shop-stats { font-size: 12px; font-weight: 800; opacity: 0.85; }
+.shop-btn {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 5px;
+  border: 3px solid var(--navy);
+  border-radius: 12px;
+  background: linear-gradient(#7fdcff, var(--sky-d));
+  color: var(--navy);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgb(0 0 0 / 35%);
+  transition: transform 120ms, filter 120ms;
+}
+.shop-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.shop-btn.buy { background: linear-gradient(var(--sun-hi), var(--sun-d)); }
+.shop-btn:disabled { filter: grayscale(0.6); opacity: 0.55; cursor: not-allowed; }
+.shop-card .menu-back-button { width: 100%; min-height: 54px; margin-top: 16px; text-align: center; }
+
+/* ---------- G'alaba / mag'lubiyat */
+
+.start-overlay, .end-overlay {
   position: absolute;
   z-index: 2;
   inset: 0;
@@ -599,64 +702,97 @@ select:focus-visible {
   padding: 20px;
   place-items: center;
   border: 0;
-  background: rgb(10 20 21 / 30%);
-  cursor: pointer;
-}
-
-.start-card,
-.end-card {
-  display: flex;
-  width: min(440px, 100%);
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  padding: 28px;
-  border: 1px solid rgb(255 255 255 / 26%);
-  border-radius: 8px;
-  background: rgb(22 32 33 / 92%);
-  color: #fff;
-  text-align: center;
-}
-
-.start-card strong,
-.end-card strong {
-  font-size: clamp(20px, 4vw, 27px);
-  font-weight: 650;
-}
-
-.start-card > span,
-.end-card > span {
-  color: #e0e7e4;
-  font-size: 14px;
-}
-
-.start-card small {
-  max-width: 360px;
-  color: #c4cfcb;
-  font-size: 11px;
-  line-height: 1.6;
-}
-
-.end-overlay {
+  background: radial-gradient(ellipse at center, rgb(8 24 64 / 35%), rgb(8 24 64 / 82%));
+  backdrop-filter: blur(4px);
   cursor: default;
 }
-
-.end-card button {
-  margin-top: 6px;
-  padding: 9px 17px;
-  border: 0;
-  border-radius: 5px;
-  background: #397fa8;
+.start-card, .end-card {
+  display: flex;
+  width: min(430px, 100%);
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 28px 26px 24px;
+  border: 4px solid var(--navy);
+  border-radius: 26px;
+  background: linear-gradient(180deg, #2a55b8, #142f73);
   color: #fff;
-  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 8px 0 rgb(0 0 0 / 40%), 0 30px 80px rgb(0 0 0 / 55%), inset 0 0 0 3px rgb(255 255 255 / 20%);
+  animation: pop-in 420ms var(--ease) both;
+}
+.end-card::before { display: block; font-size: 58px; line-height: 1; filter: drop-shadow(0 4px 0 rgb(0 0 0 / 35%)); }
+.end-card.victory::before { content: "🏆"; }
+.end-card.defeat::before { content: "💥"; }
+.end-card strong {
+  font-family: var(--display);
+  font-size: clamp(36px, 8vw, 56px);
+  font-weight: var(--display-weight);
+  letter-spacing: 0.05em;
+  line-height: 1;
+  -webkit-text-stroke: 7px var(--navy);
+  paint-order: stroke fill;
+  text-shadow: 0 5px 0 rgb(0 0 0 / 35%);
+}
+.end-card.victory strong { color: var(--sun); }
+.end-card.defeat strong { color: var(--coral); }
+.end-card > span { color: #fff; font-size: 17px; font-weight: 800; }
+.end-coins {
+  padding: 4px 18px;
+  border: 3px solid var(--navy);
+  border-radius: 999px;
+  background: rgb(0 0 0 / 28%);
+  color: var(--sun-hi) !important;
+  font-family: var(--display);
+  font-size: 24px !important;
+  font-weight: var(--display-weight);
+}
+.end-card button {
+  margin-top: 8px;
+  padding: 12px 34px;
+  border: 3px solid var(--navy);
+  border-radius: 14px;
+  background: linear-gradient(#9af0a2, var(--lime) 45%, var(--lime-d));
+  color: var(--navy);
+  font-family: var(--display);
+  font-size: 20px;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  box-shadow: 0 5px 0 rgb(0 0 0 / 38%);
+  transition: transform 120ms var(--ease), filter 120ms;
+}
+.end-card button:hover { filter: brightness(1.1); transform: translateY(-2px); }
+.end-card button:active { transform: translateY(3px); box-shadow: 0 2px 0 rgb(0 0 0 / 38%); }
+
+/* ============================================================ ANIMATSIYA */
+
+@keyframes pop-in { from { opacity: 0; transform: translateY(16px) scale(0.92); } to { opacity: 1; transform: none; } }
+@keyframes hurt { from { opacity: 1; } to { opacity: 0; } }
+@keyframes feed-in { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: none; } }
+@keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+@keyframes shine { 0%, 55% { transform: translateX(-130%); } 80%, 100% { transform: translateX(130%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-card, .end-card, .start-card, .hurt-flash, .respawn-banner, .kill-feed > div, .menu-nav-button.primary::after { animation: none; }
 }
 
-.end-card button:hover {
-  background: #458fb9;
-}
+/* ======================================================= TELEFON / PLANSHET */
 
 @media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
+  html, body, #root { height: 100%; min-height: 0; }
+  body { min-height: 0; }
+
+  .game {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
   .mobile-controls {
     position: absolute;
     z-index: 3;
@@ -668,486 +804,6 @@ select:focus-visible {
     -webkit-user-select: none;
   }
 
-  .touch-stick {
-    position: absolute;
-    bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
-    left: max(18px, env(safe-area-inset-left));
-    width: clamp(104px, 18vmin, 124px);
-    height: clamp(104px, 18vmin, 124px);
-    border: 1px solid rgb(255 255 255 / 54%);
-    border-radius: 50%;
-    background: rgb(20 30 31 / 48%);
-    pointer-events: auto;
-    touch-action: none;
-  }
-
-  .touch-stick::before {
-    position: absolute;
-    inset: 25%;
-    border: 1px solid rgb(255 255 255 / 18%);
-    border-radius: 50%;
-    content: "";
-  }
-
-  .touch-stick-knob {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 46px;
-    height: 46px;
-    transform: translate(calc(-50% + var(--stick-x, 0px)), calc(-50% + var(--stick-y, 0px)));
-    border: 1px solid rgb(255 255 255 / 66%);
-    border-radius: 50%;
-    background: rgb(66 140 184 / 82%);
-    box-shadow: inset 0 1px rgb(255 255 255 / 25%);
-    pointer-events: none;
-  }
-
-  .touch-actions {
-    position: absolute;
-    right: max(18px, env(safe-area-inset-right));
-    bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
-    display: flex;
-    flex-direction: column-reverse;
-    align-items: center;
-    gap: 10px;
-    pointer-events: none;
-  }
-
-  .touch-action {
-    display: grid;
-    width: clamp(60px, 10vmin, 70px);
-    height: clamp(60px, 10vmin, 70px);
-    padding: 5px;
-    place-items: center;
-    border: 1px solid rgb(255 255 255 / 60%);
-    border-radius: 50%;
-    background: rgb(20 30 31 / 82%);
-    color: #fff;
-    font-size: 11px;
-    font-weight: 700;
-    pointer-events: auto;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-  }
-
-  .attack-action {
-    background: rgb(150 45 45 / 82%);
-  }
-
-  .jump-action {
-    background: rgb(35 91 135 / 82%);
-  }
-
-  .touch-action:active {
-    filter: brightness(1.35);
-    transform: scale(0.94);
-  }
-
-  .game {
-    height: 100dvh;
-    min-height: 100%;
-  }
-
-  .hud {
-    top: max(68px, calc(env(safe-area-inset-top) + 56px));
-    grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr);
-    gap: 5px;
-    width: calc(100% - 20px);
-    min-width: 0;
-  }
-
-  .health-card {
-    padding: 7px;
-    background: rgb(20 30 31 / 84%);
-  }
-
-  .health-label {
-    font-size: 7px;
-  }
-
-  .health-label span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .health-label strong {
-    flex: 0 0 auto;
-    font-size: 11px;
-  }
-
-  .score-card {
-    min-height: 48px;
-  }
-
-  .score-card span {
-    font-size: 6px;
-  }
-
-  .score-card strong {
-    font-size: 20px;
-  }
-
-  .enemy-picker {
-    top: max(8px, env(safe-area-inset-top));
-    left: max(10px, env(safe-area-inset-left));
-    gap: 6px;
-    padding: 6px;
-    font-size: 10px;
-  }
-
-  .open-menu-button {
-    top: max(8px, env(safe-area-inset-top));
-    left: max(10px, env(safe-area-inset-left));
-    padding: 7px 9px;
-    font-size: 10px;
-  }
-
-  .view-toggle {
-    top: max(8px, env(safe-area-inset-top));
-    right: max(10px, env(safe-area-inset-right));
-  }
-
-  .view-toggle button {
-    min-height: 40px;
-    padding: 7px 9px;
-    font-size: 10px;
-  }
-
-  .weapon-toggle {
-    right: max(10px, env(safe-area-inset-right));
-    bottom: max(150px, calc(env(safe-area-inset-bottom) + 138px));
-  }
-
-  .weapon-toggle button {
-    min-height: 40px;
-    padding: 8px 10px;
-    font-size: 10px;
-  }
-
-  .menu-card {
-    padding: 21px;
-  }
-
-  .settings-card {
-    padding: 38px 21px 21px;
-  }
-
-  .settings-ribbon {
-    margin-top: -56px;
-  }
-
-  .team-settings {
-    grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
-    gap: 8px;
-  }
-
-  .team-count {
-    min-height: 135px;
-    padding: 8px 4px;
-    font-size: 10px;
-  }
-
-  .bottom-hint {
-    display: none;
-  }
-}
-
-@media (max-width: 460px) {
-  .menu-overlay {
-    padding: 12px;
-  }
-
-  .menu-card {
-    padding: 17px;
-  }
-
-  .settings-card {
-    padding: 34px 14px 17px;
-  }
-
-  .settings-ribbon {
-    margin-top: -52px;
-    margin-bottom: 20px;
-  }
-
-  .team-settings {
-    grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr);
-    gap: 5px;
-  }
-
-  .team-emblem {
-    width: 46px;
-    height: 60px;
-  }
-
-  .team-count select {
-    min-width: 62px;
-  }
-
-  .settings-grid {
-    grid-template-columns: 1fr;
-    gap: 9px;
-    margin-top: 16px;
-  }
-
-  .settings-actions {
-    gap: 10px;
-    margin-top: 17px;
-  }
-
-  .settings-actions .menu-back-button,
-  .settings-actions .menu-start {
-    min-height: 52px;
-    padding: 8px;
-    font-size: 14px;
-  }
-
-  .touch-stick {
-    width: clamp(104px, 18vmin, 124px);
-    height: clamp(104px, 18vmin, 124px);
-  }
-
-  .touch-stick-knob {
-    width: 43px;
-    height: 43px;
-  }
-
-  .touch-action {
-    width: clamp(60px, 10vmin, 70px);
-    height: clamp(60px, 10vmin, 70px);
-    font-size: 10px;
-  }
-
-  .weapon-toggle {
-    right: max(10px, env(safe-area-inset-right));
-    bottom: max(150px, calc(env(safe-area-inset-bottom) + 138px));
-  }
-}
-
-/* ===== Telefon: to'g'ri o'lcham, ixcham HUD, qulay tugmalar ===== */
-@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
-  html, body, #root { height: 100%; min-height: 0; }
-  body { min-height: 0; }
-  .game {
-    position: fixed;
-    inset: 0;
-    width: auto;
-    height: auto;
-    min-height: 0;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-  }
-  .weapon-toggle { display: none; }
-  .touch-actions {
-    right: max(14px, env(safe-area-inset-right));
-    bottom: max(14px, calc(env(safe-area-inset-bottom) + 10px));
-    display: block;
-    width: 176px;
-    height: 168px;
-  }
-  .touch-action { position: absolute; width: 62px; height: 62px; font-size: 22px; }
-  .attack-action { right: 0; bottom: 0; width: 92px; height: 92px; font-size: 13px; }
-  .jump-action { right: 102px; bottom: 16px; }
-  .swap-action { right: 24px; bottom: 102px; background: rgb(60 60 70 / 82%); }
-}
-
-@media (pointer: coarse) and (max-height: 600px) {
-  .hud {
-    top: max(8px, env(safe-area-inset-top));
-    width: calc(100% - 340px);
-    min-width: 0;
-    grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
-    gap: 5px;
-  }
-  .health-card { padding: 5px 8px; }
-  .health-label { margin-bottom: 4px; font-size: 7px; }
-  .health-label strong { font-size: 11px; }
-  .health-track { height: 4px; }
-  .score-card { min-height: 36px; padding: 3px; }
-  .score-card span { font-size: 6px; }
-  .score-card strong { font-size: 16px; }
-}
-
-@media (max-height: 520px) {
-  .menu-overlay { padding: 8px; }
-  .main-menu-card { gap: 8px; padding: 14px; }
-  .main-menu-heading { margin-bottom: 0; }
-  .menu-nav-button { min-height: 46px; padding: 8px 14px; font-size: 16px; }
-  .menu-nav-button.primary { min-height: 56px; font-size: 20px; }
-  .menu-card { padding: 16px; }
-  .settings-card { padding: 30px 16px 14px; }
-  .settings-ribbon { margin: -46px auto 10px; padding: 8px; font-size: 16px; }
-  .factions-label { margin-bottom: 8px; padding: 4px 20px; }
-  .team-count { min-height: 84px; gap: 4px; }
-  .team-emblem { width: 34px; height: 44px; font-size: 20px; }
-  .settings-grid { margin-top: 10px; }
-  .settings-actions { margin-top: 12px; }
-  .settings-actions .menu-back-button, .settings-actions .menu-start { min-height: 44px; font-size: 15px; }
-}
-
-/* ===== Yangi mavzu: tungi po'lat + jez oltin, jamoa ranglari ko'k va qip-qizil ===== */
-:root {
-  --ink: #0e1726;
-  --brass: #d8a73f;
-  --brass-d: #8a6420;
-  --bone: #f2e8cf;
-  --blue: #3f8cff;
-  --crimson: #e2455b;
-  --display: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
-  background: var(--ink);
-}
-
-button:focus-visible, select:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
-
-.health-card, .score-card, .enemy-picker, .view-toggle, .weapon-toggle, .bottom-hint, .open-menu-button {
-  border: 1px solid rgb(216 167 63 / 45%);
-  background: rgb(14 23 38 / 80%);
-  box-shadow: 0 2px 10px rgb(0 0 0 / 25%);
-}
-.open-menu-button { color: var(--bone); font-family: var(--display); letter-spacing: 0.04em; }
-.open-menu-button:hover { background: rgb(27 42 65 / 95%); border-color: var(--brass); }
-.player-card::before, .enemy-card::before { width: 3px; }
-.player-card::before { background: var(--blue); }
-.enemy-card::before { background: var(--crimson); }
-.health-label { color: var(--bone); font-family: var(--display); }
-.blue-fill { background: linear-gradient(90deg, #2f6fe0, #6db2ff); }
-.red-fill { background: linear-gradient(90deg, #c9283f, #ff7185); }
-.score-card span { color: var(--bone); }
-.score-card strong { color: var(--brass); font-family: var(--display); }
-.view-toggle button, .weapon-toggle button { color: var(--bone); }
-.view-toggle button.selected, .weapon-toggle button.selected { background: var(--brass); color: #1a1306; }
-.enemy-picker select, .main-language select, .team-count select, .setting-row select {
-  border: 2px solid var(--brass-d);
-  background: #14233a;
-  color: var(--bone);
-}
-
-.menu-overlay {
-  background:
-    radial-gradient(ellipse at 50% 0%, rgb(63 140 255 / 22%), transparent 55%),
-    radial-gradient(ellipse at 50% 100%, rgb(226 69 91 / 18%), transparent 55%),
-    linear-gradient(180deg, #0e1726, #15233a 60%, #0b1220);
-}
-.menu-card {
-  border: 2px solid var(--brass-d);
-  background: linear-gradient(160deg, #1f3150, #16233a);
-  box-shadow: 0 0 0 4px var(--ink), 0 0 0 5px rgb(216 167 63 / 50%), 0 30px 80px rgb(0 0 0 / 55%);
-}
-.main-menu-heading h1 { color: var(--bone); font-family: var(--display); letter-spacing: 0.12em; text-shadow: 0 3px 0 #000; }
-.menu-mark {
-  border-color: #f3d98d;
-  background: linear-gradient(#e7bd5a, #a97a22);
-  color: #1a1306;
-  box-shadow: inset 0 0 0 3px rgb(255 240 190 / 35%), 0 3px 0 #4a3208;
-}
-.menu-nav-button, .menu-back-button {
-  border: 2px solid var(--brass-d);
-  background: linear-gradient(#24395e, #162640);
-  color: var(--bone);
-  font-family: var(--display);
-  text-shadow: 0 1px #000;
-  box-shadow: inset 0 0 0 2px rgb(216 167 63 / 18%), 0 5px 0 #0a111d;
-}
-.menu-nav-button:hover, .menu-back-button:hover { filter: none; border-color: var(--brass); background: linear-gradient(#2d4875, #1c3254); }
-.menu-nav-button.primary {
-  border-color: #f3d98d;
-  background: linear-gradient(#f0c75e, #c28a26);
-  color: #2a1c05;
-  text-shadow: 0 1px rgb(255 255 255 / 35%);
-  box-shadow: inset 0 0 0 3px rgb(255 240 190 / 40%), 0 6px 0 #6b4b12;
-}
-.menu-nav-button.primary:hover { background: linear-gradient(#f7d478, #d09630); }
-.menu-start {
-  border: 2px solid #f3a0ab;
-  background: linear-gradient(#ea5a6e, #b8283f);
-  color: #fff;
-  font-family: var(--display);
-  box-shadow: inset 0 0 0 3px rgb(255 190 198 / 30%), 0 5px 0 #5c1220;
-}
-.menu-start:hover { background: linear-gradient(#f46b7e, #cb3047); }
-.main-language, .setting-row, .controls-card p { color: var(--bone); }
-.settings-ribbon {
-  border-color: #e8c46b;
-  background: linear-gradient(#d23a52, #9e1f35);
-  font-family: var(--display);
-  text-shadow: 0 2px #4a0f1c;
-  box-shadow: 0 5px 0 #4a0f1c, inset 0 0 0 3px rgb(255 190 198 / 25%);
-}
-.factions-label { background: linear-gradient(#e7bd5a, #a97a22); color: #1a1306; text-shadow: none; font-family: var(--display); }
-.team-count {
-  border: 2px solid #0a111d;
-  background: linear-gradient(150deg, #243a5e, #172640);
-  color: var(--bone);
-  box-shadow: inset 0 0 0 2px rgb(216 167 63 / 16%), 0 4px 0 #0a111d;
-}
-.blue-team .team-emblem { background: linear-gradient(#5aa5ff, #1c4fb8); color: #d6e8ff; }
-.red-team .team-emblem { background: linear-gradient(#f0566b, #a81b33); color: #ffd8dd; }
-.versus-mark { color: var(--brass); font-family: var(--display); }
-
-.start-overlay, .end-overlay { background: rgb(6 12 22 / 55%); backdrop-filter: blur(3px); }
-.end-card {
-  position: relative;
-  width: min(420px, 100%);
-  gap: 10px;
-  padding: 28px 26px 24px;
-  border: 2px solid var(--brass-d);
-  border-radius: 10px;
-  background: linear-gradient(160deg, #1f3150, #121e33);
-  box-shadow: 0 0 0 4px var(--ink), 0 0 0 5px rgb(216 167 63 / 45%), 0 30px 80px rgb(0 0 0 / 60%);
-  animation: card-in 380ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
-}
-.end-card::before { display: block; font-size: 36px; line-height: 1; }
-.end-card.victory { border-color: var(--brass); }
-.end-card.defeat { border-color: #a9283d; }
-.end-card.victory::before { content: "⚔"; color: var(--brass); }
-.end-card.defeat::before { content: "☠"; color: var(--crimson); }
-.end-card strong { font-family: var(--display); font-size: clamp(30px, 7vw, 44px); font-weight: 800; letter-spacing: 0.1em; line-height: 1.05; }
-.end-card.victory strong { color: var(--brass); text-shadow: 0 0 24px rgb(216 167 63 / 55%), 0 3px 0 #4a3208; }
-.end-card.defeat strong { color: var(--crimson); text-shadow: 0 0 24px rgb(226 69 91 / 50%), 0 3px 0 #4a0f1c; }
-.end-card > span { color: var(--bone); font-size: 15px; }
-.end-card button {
-  margin-top: 10px;
-  padding: 12px 28px;
-  border: 2px solid #f3d98d;
-  border-radius: 6px;
-  background: linear-gradient(#f0c75e, #c28a26);
-  color: #2a1c05;
-  font-family: var(--display);
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  box-shadow: 0 4px 0 #6b4b12;
-}
-.end-card button:hover { background: linear-gradient(#f7d478, #d09630); }
-.end-card button:active { transform: translateY(2px); box-shadow: 0 2px 0 #6b4b12; }
-
-.hurt-flash {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  background: radial-gradient(ellipse at center, transparent 55%, rgb(226 40 60 / 55%) 100%);
-  pointer-events: none;
-  animation: hurt 450ms ease-out both;
-}
-
-@keyframes card-in { from { opacity: 0; transform: translateY(14px) scale(0.94); } to { opacity: 1; transform: none; } }
-@keyframes hurt { from { opacity: 1; } to { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .end-card, .hurt-flash { animation: none; } }
-
-.touch-stick { border-color: rgb(216 167 63 / 55%); background: rgb(14 23 38 / 50%); }
-.touch-stick-knob { border-color: rgb(255 240 190 / 70%); background: rgb(216 167 63 / 88%); }
-.touch-action { border-color: rgb(216 167 63 / 60%); background: rgb(14 23 38 / 82%); color: var(--bone); }
-.attack-action { background: rgb(190 40 62 / 90%); }
-.jump-action { background: rgb(40 90 170 / 90%); }
-.swap-action { background: rgb(38 57 90 / 90%); }
-
-/* Suzuvchi joystik: chap yarmida barmoq tekkan joyda chiqadi */
-.touch-zone { display: none; }
-@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
   .touch-zone {
     position: absolute;
     bottom: 0;
@@ -1158,160 +814,406 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--brass); ou
     pointer-events: auto;
     touch-action: none;
   }
-  .touch-stick { pointer-events: none; }
-  .touch-stick.active { bottom: auto; transform: translate(-50%, -50%); background: rgb(14 23 38 / 62%); }
+
+  .touch-stick {
+    position: absolute;
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
+    left: max(18px, env(safe-area-inset-left));
+    width: clamp(104px, 18vmin, 124px);
+    height: clamp(104px, 18vmin, 124px);
+    border: 3px solid var(--navy);
+    border-radius: 50%;
+    background: rgb(11 33 82 / 55%);
+    box-shadow: inset 0 0 0 3px rgb(255 255 255 / 25%), 0 4px 0 rgb(0 0 0 / 30%);
+    pointer-events: none;
+    touch-action: none;
+  }
+  .touch-stick.active { bottom: auto; transform: translate(-50%, -50%); }
+  .touch-stick-knob {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 48px;
+    height: 48px;
+    transform: translate(calc(-50% + var(--stick-x, 0px)), calc(-50% + var(--stick-y, 0px)));
+    border: 3px solid var(--navy);
+    border-radius: 50%;
+    background: linear-gradient(var(--sun-hi), var(--sun-d));
+    box-shadow: 0 3px 0 rgb(0 0 0 / 35%);
+    pointer-events: none;
+  }
+
+  .touch-actions {
+    position: absolute;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, calc(env(safe-area-inset-bottom) + 10px));
+    display: block;
+    width: 176px;
+    height: 168px;
+    pointer-events: none;
+  }
+  .touch-action {
+    position: absolute;
+    display: grid;
+    width: 62px;
+    height: 62px;
+    padding: 5px;
+    place-items: center;
+    border: 3px solid var(--navy);
+    border-radius: 50%;
+    background: var(--glass);
+    color: #fff;
+    font-family: var(--display);
+    font-size: 22px;
+    pointer-events: auto;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    box-shadow: 0 4px 0 rgb(0 0 0 / 35%), inset 0 0 0 3px rgb(255 255 255 / 25%);
+  }
+  .touch-action:active { filter: brightness(1.3); transform: scale(0.93); }
+  .attack-action { right: 0; bottom: 0; width: 94px; height: 94px; background: linear-gradient(#ff8f9d, var(--coral-d)); font-size: 15px; }
+  .jump-action { right: 104px; bottom: 16px; background: linear-gradient(#8cc0ff, #2f69e0); }
+  .swap-action { right: 24px; bottom: 104px; background: linear-gradient(var(--sun-hi), var(--sun-d)); }
+
+  .hud {
+    top: max(70px, calc(env(safe-area-inset-top) + 58px));
+    grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr);
+    gap: 6px;
+    width: calc(100% - 20px);
+    min-width: 0;
+  }
+  .health-card { padding: 6px 8px 7px; }
+  .health-label { font-size: 8px; }
+  .health-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .health-label strong { flex: 0 0 auto; font-size: 14px; }
+  .health-track { height: 9px; }
+  .score-card { min-height: 50px; }
+  .score-card span { font-size: 7px; }
+  .score-card strong { font-size: 22px; }
+
+  .enemy-picker, .open-menu-button { top: max(8px, env(safe-area-inset-top)); left: max(10px, env(safe-area-inset-left)); }
+  .open-menu-button { padding: 7px 11px; font-size: 12px; }
+  .coin-chip { top: max(52px, calc(env(safe-area-inset-top) + 44px)); left: max(10px, env(safe-area-inset-left)); font-size: 14px; }
+  .view-toggle { top: max(8px, env(safe-area-inset-top)); right: max(10px, env(safe-area-inset-right)); }
+  .view-toggle button { min-height: 38px; padding: 6px 10px; font-size: 11px; }
+  .weapon-toggle { display: none; }
+  .bottom-hint { display: none; }
+  .kill-feed { top: 124px; right: 10px; }
+  .kill-feed > div { font-size: 11px; }
+
+  .menu-card { padding: 21px; }
+  .settings-card { padding: 40px 20px 20px; }
+  .settings-ribbon { margin-top: -58px; }
+  .team-settings { grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr); gap: 8px; }
+  .team-count { min-height: 135px; padding: 8px 4px; font-size: 11px; }
+  .main-menu-card { padding: 0; }
 }
 
-/* ===== Xarita va odam soni tanlash ===== */
-.maps-card { width: min(780px, 100%); padding-top: 40px; }
-.count-card { width: min(640px, 100%); padding-top: 40px; }
-.map-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.map-card {
-  display: grid;
-  gap: 8px;
-  padding: 8px;
-  border: 2px solid #0a111d;
-  border-radius: 8px;
-  background: linear-gradient(150deg, #243a5e, #172640);
-  color: var(--bone);
-  text-align: center;
-  cursor: pointer;
-  box-shadow: inset 0 0 0 2px rgb(216 167 63 / 16%), 0 4px 0 #0a111d;
-  transition: transform 120ms ease;
-}
-.map-card:hover { transform: translateY(-2px); }
-.map-card.selected { border-color: var(--brass); box-shadow: 0 0 0 2px var(--brass), 0 0 20px rgb(216 167 63 / 40%), 0 4px 0 #0a111d; }
-.map-preview { display: block; height: 96px; border-radius: 5px; }
-.preview-meadow {
-  background:
-    radial-gradient(circle at 25% 108%, #5f8f3a 0 38%, transparent 39%),
-    radial-gradient(circle at 78% 112%, #6f9a3c 0 44%, transparent 45%),
-    linear-gradient(#8bd5f1 0 58%, #a6bd60 58%);
-}
-.preview-desert {
-  background:
-    radial-gradient(circle at 28% 108%, #d2a85e 0 40%, transparent 41%),
-    radial-gradient(circle at 80% 112%, #c4a46a 0 45%, transparent 46%),
-    linear-gradient(#f0d4a4 0 58%, #d8bf88 58%);
-}
-.preview-snow {
-  background:
-    radial-gradient(circle at 28% 108%, #ffffff 0 40%, transparent 41%),
-    radial-gradient(circle at 80% 112%, #dbe8f2 0 45%, transparent 46%),
-    linear-gradient(#bcd4e6 0 58%, #e9f2f9 58%);
-}
-.map-info { display: grid; gap: 3px; }
-.map-name { font-family: var(--display); font-size: 16px; font-weight: 800; }
-.map-desc { font-size: 11px; line-height: 1.35; opacity: 0.8; }
-.count-row { display: grid; gap: 8px; margin-bottom: 16px; }
-.count-label { font-family: var(--display); font-size: 14px; font-weight: 800; color: var(--bone); }
-.count-row.blue .count-label { color: #8fc0ff; }
-.count-row.red .count-label { color: #ff8e9d; }
-.count-chips { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 6px; }
-.count-chip {
-  min-height: 46px;
-  border: 2px solid #0a111d;
-  border-radius: 6px;
-  background: #1a2b47;
-  color: var(--bone);
-  font-size: 16px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.count-chip.selected { border-color: #f3d98d; background: linear-gradient(#f0c75e, #c28a26); color: #2a1c05; }
 @media (max-width: 620px) {
   .map-cards { grid-template-columns: 1fr; gap: 8px; }
   .map-card { grid-template-columns: 96px minmax(0, 1fr); align-items: center; text-align: left; }
   .map-preview { height: 62px; }
   .count-chips { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-}
-@media (max-height: 520px) and (min-width: 621px) {
-  .map-preview { height: 62px; }
-  .map-desc { display: none; }
-  .count-chip { min-height: 38px; }
-  .count-row { margin-bottom: 10px; }
-}
-
-/* Xarita + odam soni bitta oynada */
-.maps-card { width: min(820px, 100%); }
-.section-label { margin: 14px 0 8px; color: var(--brass); font-family: var(--display); font-size: 13px; font-weight: 800; letter-spacing: 0.08em; }
-.maps-card .count-row { margin-bottom: 10px; }
-@media (max-height: 520px) {
-  .section-label { margin: 8px 0 5px; font-size: 11px; }
-  .maps-card .map-preview { height: 46px; }
-  .maps-card .map-card { gap: 4px; padding: 5px; }
-  .maps-card .map-name { font-size: 13px; }
-  .maps-card .map-desc { display: none; }
-  .maps-card .count-row { gap: 4px; margin-bottom: 6px; }
-  .maps-card .count-label { font-size: 11px; }
-  .maps-card .count-chip { min-height: 30px; font-size: 14px; }
-}
-
-/* ===== Magazin va tangalar ===== */
-.coin-chip {
-  position: absolute;
-  z-index: 3;
-  top: 62px;
-  left: 20px;
-  padding: 5px 10px;
-  border: 1px solid rgb(216 167 63 / 45%);
-  border-radius: 6px;
-  background: rgb(14 23 38 / 80%);
-  color: var(--brass);
-  font-family: var(--display);
-  font-size: 13px;
-  font-weight: 800;
-  pointer-events: none;
-}
-.end-coins { color: var(--brass) !important; font-family: var(--display); font-size: 20px !important; font-weight: 800; }
-.shop-card { width: min(780px, 100%); padding-top: 40px; }
-.shop-coins { margin-bottom: 4px; color: var(--brass); font-family: var(--display); font-size: 24px; font-weight: 800; text-align: center; }
-.shop-card .shop-hint { margin: 0 0 14px; font-size: 12px; opacity: 0.8; }
-.shop-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-.shop-item {
-  display: grid;
-  gap: 5px;
-  justify-items: center;
-  padding: 10px 8px;
-  border: 2px solid #0a111d;
-  border-radius: 8px;
-  background: linear-gradient(150deg, #243a5e, #172640);
-  color: var(--bone);
-  text-align: center;
-  box-shadow: inset 0 0 0 2px rgb(216 167 63 / 16%), 0 4px 0 #0a111d;
-}
-.shop-item.selected { border-color: var(--brass); box-shadow: 0 0 0 2px var(--brass), 0 0 18px rgb(216 167 63 / 35%); }
-.weapon-icon { width: 56px; height: 56px; }
-.shop-name { font-family: var(--display); font-size: 15px; font-weight: 800; }
-.shop-stats { font-size: 11px; opacity: 0.8; }
-.shop-btn {
-  width: 100%;
-  min-height: 38px;
-  margin-top: 4px;
-  border: 2px solid var(--brass-d);
-  border-radius: 6px;
-  background: linear-gradient(#24395e, #162640);
-  color: var(--bone);
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-.shop-btn.buy { border-color: #f3d98d; background: linear-gradient(#f0c75e, #c28a26); color: #2a1c05; }
-.shop-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.shop-card .menu-back-button { width: 100%; min-height: 56px; margin-top: 16px; font-size: 17px; }
-@media (max-width: 620px) {
   .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
-  .coin-chip { top: 52px; left: 10px; font-size: 12px; }
+
+@media (max-width: 460px) {
+  .menu-overlay { padding: 12px; }
+  .menu-overlay:has(.main-menu-card) { padding-left: 14px; }
+  .menu-card { padding: 17px; }
+  .settings-card { padding: 36px 14px 17px; }
+  .settings-ribbon { margin-top: -54px; margin-bottom: 18px; }
+  .team-settings { grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); gap: 5px; }
+  .team-emblem { width: 46px; height: 58px; }
+  .team-count select { min-width: 62px; }
+  .settings-grid { grid-template-columns: 1fr; gap: 9px; margin-top: 16px; }
+  .settings-actions { gap: 10px; margin-top: 16px; }
+  .settings-actions .menu-back-button, .settings-actions .menu-start { min-height: 50px; padding: 8px; font-size: 15px; }
 }
+
+@media (pointer: coarse) and (max-height: 600px) {
+  .hud {
+    top: max(8px, env(safe-area-inset-top));
+    width: calc(100% - 340px);
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr) 46px minmax(0, 1fr);
+    gap: 5px;
+  }
+  .health-card { padding: 4px 8px 6px; }
+  .health-label { margin-bottom: 3px; font-size: 7px; }
+  .health-label strong { font-size: 12px; }
+  .health-track { height: 7px; }
+  .score-card { min-height: 38px; padding: 2px; }
+  .score-card strong { font-size: 17px; }
+}
+
 @media (max-height: 520px) {
-  .weapon-icon { width: 34px; height: 34px; }
+  .menu-overlay { padding: 8px; }
+  .menu-overlay:has(.main-menu-card) { padding-left: clamp(14px, 5vw, 60px); }
+  .main-menu-card { gap: 7px; }
+  .main-menu-heading { margin-bottom: 2px; }
+  .main-menu-heading h1 { font-size: 32px; -webkit-text-stroke: 5px var(--navy); }
+  .menu-mark { display: none; }
+  .menu-nav-button { min-height: 40px; padding: 6px 14px; font-size: 15px; }
+  .menu-nav-button.primary { min-height: 52px; font-size: 22px; }
+  .menu-card { padding: 14px; }
+  .settings-card { padding: 30px 16px 12px; }
+  .settings-ribbon { margin: -46px auto 10px; padding: 6px; font-size: 17px; }
+  .factions-label { margin-bottom: 8px; padding: 3px 18px; }
+  .team-count { min-height: 84px; gap: 4px; }
+  .team-emblem { width: 34px; height: 44px; font-size: 20px; }
+  .settings-grid { margin-top: 10px; }
+  .settings-actions { margin-top: 10px; }
+  .settings-actions .menu-back-button, .settings-actions .menu-start { min-height: 42px; font-size: 15px; }
+  .section-label { margin: 8px 0 5px; font-size: 13px; }
+  .maps-card .map-preview { height: 46px; }
+  .maps-card .map-card { gap: 4px; padding: 5px; }
+  .maps-card .map-name { font-size: 14px; }
+  .maps-card .map-desc { display: none; }
+  .maps-card .count-row { gap: 4px; margin-bottom: 6px; }
+  .maps-card .count-label { font-size: 12px; }
+  .maps-card .count-chip { min-height: 30px; font-size: 15px; }
+  .weapon-icon { width: 38px; height: 38px; }
   .shop-item { gap: 2px; padding: 6px; }
-  .shop-name { font-size: 13px; }
+  .shop-name { font-size: 14px; }
   .shop-stats { font-size: 10px; }
   .shop-btn { min-height: 30px; }
-  .shop-coins { font-size: 18px; }
+  .shop-coins { font-size: 22px; }
   .shop-card .shop-hint { margin-bottom: 6px; }
-  .shop-card .menu-back-button { min-height: 40px; margin-top: 8px; font-size: 14px; }
+  .shop-card .menu-back-button { min-height: 40px; margin-top: 8px; font-size: 15px; }
 }
+
+
+/* =====================================================================
+   RUS TILI (kirill) — html[lang="ru"] bo'lganda ishlaydi
+   Lilita One kirillni qo'llamaydi, shuning uchun Rubik (qalin) ishlatiladi.
+   Ruscha matnlar uzunroq: o'lchamlar kichraytirilgan, so'zlar bo'linadi.
+   ===================================================================== */
+
+:lang(ru) {
+  --display: "Rubik", "Trebuchet MS", system-ui, sans-serif;
+  --display-weight: 800;
+  hyphens: auto;
+  overflow-wrap: anywhere;
+}
+
+:lang(ru) .main-menu-heading h1 { font-size: clamp(32px, 6vw, 48px); letter-spacing: 0; -webkit-text-stroke: 6px var(--navy); line-height: 1; }
+:lang(ru) .menu-nav-button,
+:lang(ru) .menu-back-button,
+:lang(ru) .menu-start { font-size: clamp(14px, 2.2vw, 17px); letter-spacing: 0.01em; line-height: 1.15; }
+:lang(ru) .menu-nav-button.primary { font-size: clamp(22px, 3.4vw, 28px); }
+:lang(ru) .settings-ribbon { font-size: clamp(16px, 2.8vw, 22px); letter-spacing: 0.01em; -webkit-text-stroke: 4px var(--navy); line-height: 1.15; }
+:lang(ru) .section-label { font-size: 14px; letter-spacing: 0.02em; }
+:lang(ru) .count-label { font-size: 13px; letter-spacing: 0; }
+:lang(ru) .factions-label { font-size: 12px; }
+:lang(ru) .team-count { font-size: 12px; }
+:lang(ru) .map-name { font-size: 15px; letter-spacing: 0; }
+:lang(ru) .map-desc { font-size: 11.5px; }
+:lang(ru) .shop-name { font-size: 15px; letter-spacing: 0; }
+:lang(ru) .shop-btn { font-size: 12px; }
+:lang(ru) .shop-card .shop-hint { font-size: 12px; }
+:lang(ru) .end-card strong { font-size: clamp(30px, 7vw, 46px); letter-spacing: 0; -webkit-text-stroke: 6px var(--navy); }
+:lang(ru) .end-card > span { font-size: 16px; }
+:lang(ru) .end-card button { font-size: 17px; letter-spacing: 0; }
+:lang(ru) .open-menu-button { font-size: 13px; letter-spacing: 0; }
+:lang(ru) .respawn-banner { letter-spacing: 0; -webkit-text-stroke: 3px var(--navy); }
+:lang(ru) .score-card span { font-size: 8px; letter-spacing: 0.02em; }
+:lang(ru) .health-label { letter-spacing: 0.02em; }
+:lang(ru) .health-label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:lang(ru) .view-toggle button, :lang(ru) .weapon-toggle button { font-size: 12px; white-space: nowrap; }
+:lang(ru) .setting-row, :lang(ru) .main-language { font-size: 13px; }
+:lang(ru) .controls-card p { font-size: 14px; }
+
+/* pastdagi maslahat qatori ruscha uzun bo'ladi: bir necha qatorga o'tsin */
+:lang(ru) .bottom-hint {
+  flex-wrap: wrap;
+  row-gap: 2px;
+  width: auto;
+  max-width: min(920px, calc(100% - 24px));
+  border-radius: 16px;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Barcha tillar: uzun qurol nomi dumaloq hujum tugmasiga sig'sin */
+.attack-action { line-height: 1.05; text-align: center; text-wrap: balance; overflow: hidden; }
+@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
+  :lang(ru) .attack-action { font-size: 11px; padding: 6px; }
+  :lang(ru) .health-label { font-size: 7.5px; }
+  :lang(ru) .score-card span { font-size: 6.5px; }
+  :lang(ru) .settings-actions .menu-back-button,
+  :lang(ru) .settings-actions .menu-start { font-size: 13px; }
+}
+@media (max-width: 460px) {
+  :lang(ru) .main-menu-heading h1 { font-size: 30px; }
+  :lang(ru) .menu-nav-button { font-size: 14px; padding: 8px 12px; }
+  :lang(ru) .team-count { font-size: 10px; }
+  :lang(ru) .settings-ribbon { font-size: 15px; }
+}
+@media (max-height: 520px) {
+  :lang(ru) .main-menu-heading h1 { font-size: 26px; -webkit-text-stroke: 4px var(--navy); }
+  :lang(ru) .menu-nav-button { font-size: 13px; }
+  :lang(ru) .menu-nav-button.primary { font-size: 19px; }
+}
+
+
+/* =====================================================================
+   TELEFON UCHUN QO'SHIMCHA YAXSHILASH
+   (cho'zma ekran, tik ekran, notch/xavfsiz zonalar, barmoq uchun qulaylik)
+   ===================================================================== */
+
+/* ---------- Barcha sensorli qurilmalar */
+@media (pointer: coarse) {
+  html { -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
+  * { -webkit-tap-highlight-color: transparent; }
+  button, select, .map-card, .shop-item { touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+
+  /* Xira (blur) effekti telefonni qizdiradi va FPS ni tushiradi: o'chiramiz, o'rniga quyuqroq fon */
+  .health-card, .score-card, .enemy-picker, .view-toggle, .weapon-toggle, .bottom-hint,
+  .open-menu-button, .coin-chip, .menu-overlay, .start-overlay, .end-overlay {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .health-card, .view-toggle, .open-menu-button, .coin-chip { background: rgb(11 33 82 / 88%); }
+  .menu-overlay { background: radial-gradient(ellipse at 50% 0%, rgb(60 200 255 / 30%), transparent 60%), rgb(8 24 64 / 86%); }
+  .end-overlay { background: rgb(8 24 64 / 80%); }
+
+  .menu-overlay { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .menu-overlay:has(.main-menu-card) {
+    background: linear-gradient(90deg, rgb(6 20 56 / 90%) 0%, rgb(8 28 72 / 62%) 38%, rgb(8 28 72 / 8%) 70%, transparent 100%);
+  }
+}
+
+/* ---------- Telefon umumiy (cho'zma va tik) */
+@media (max-width: 760px), (pointer: coarse) and (max-height: 600px) {
+  /* chuqur kesim (notch) va pastki chiziq uchun xavfsiz joylar */
+  .menu-overlay {
+    align-items: safe center;
+    padding-top: max(14px, env(safe-area-inset-top));
+    padding-right: max(14px, env(safe-area-inset-right));
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+    padding-left: max(14px, env(safe-area-inset-left));
+  }
+  /* sarlavha lentasi kartadan chiqib turadi — tepasida joy qoldiramiz */
+  .menu-overlay:not(:has(.main-menu-card)) { padding-top: calc(max(14px, env(safe-area-inset-top)) + 54px); }
+
+  /* barmoq bilan bosish uchun kamida ~44px */
+  .menu-nav-button, .menu-back-button, .menu-start { min-height: 52px; }
+  .count-chip { min-height: 44px; }
+  .main-language select, .team-count select, .setting-row select { min-height: 44px; font-size: 16px; } /* 16px: iOS yaqinlashtirib yubormasin */
+  .shop-btn { min-height: 44px; }
+  .open-menu-button { min-height: 44px; }
+  .view-toggle button { min-height: 42px; }
+
+  /* "Boshlash/Ortga" tugmalari uzun kartada ham doim ko'rinib tursin */
+  .settings-actions {
+    position: sticky;
+    bottom: -14px;
+    z-index: 2;
+    margin-right: -6px;
+    margin-left: -6px;
+    padding: 12px 6px 4px;
+    background: linear-gradient(to bottom, transparent, #1b3f93 38%);
+  }
+
+  /* sensorli tugmalar: yorqinroq va bosilganda sezilarli */
+  .touch-stick::before {
+    position: absolute;
+    inset: 24%;
+    border: 3px dashed rgb(255 255 255 / 28%);
+    border-radius: 50%;
+    content: "";
+  }
+  .touch-action { transition: transform 80ms, filter 80ms; }
+  .attack-action {
+    box-shadow: 0 5px 0 rgb(0 0 0 / 38%), 0 0 24px rgb(255 86 104 / 45%), inset 0 0 0 3px rgb(255 255 255 / 30%);
+  }
+  .jump-action, .swap-action {
+    box-shadow: 0 4px 0 rgb(0 0 0 / 38%), inset 0 0 0 3px rgb(255 255 255 / 30%);
+  }
+  .swap-action { font-size: 26px; }
+
+  /* nishon telefonda avto-nishonga o'tadi, shuning uchun kichikroq va yumshoq */
+  .crosshair { width: 18px; height: 18px; border-width: 2px; opacity: 0.8; }
+
+  /* Menyu sarlavhasidagi qalin kontur kichik ekranda ingichkaroq */
+  .main-menu-heading h1 { -webkit-text-stroke: 5px var(--navy); }
+}
+
+/* ---------- Tik (portrait) telefon: menyu pastdan chiqadi, tepada sahna ko'rinadi */
+@media (max-width: 760px) and (orientation: portrait) {
+  .menu-overlay:has(.main-menu-card) {
+    align-items: end;
+    justify-items: center;
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-bottom: max(22px, env(safe-area-inset-bottom));
+    background: linear-gradient(0deg, rgb(6 20 56 / 94%) 0%, rgb(8 28 72 / 66%) 46%, rgb(8 28 72 / 8%) 78%, transparent 100%);
+  }
+  .main-menu-card { width: min(420px, 100%); }
+  .main-menu-heading { justify-items: center; margin-bottom: 8px; }
+  .main-menu-heading h1 { transform: rotate(-2deg); transform-origin: center; text-align: center; font-size: clamp(34px, 11vw, 46px); }
+  .main-language { justify-content: center; }
+
+  .hud { top: max(66px, calc(env(safe-area-inset-top) + 56px)); }
+  .view-toggle { top: max(8px, env(safe-area-inset-top)); }
+
+  /* tik ekranda jamoa soni 5 ustunda, katta chiplar */
+  .count-chips { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .team-settings { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .team-count { min-height: 0; grid-auto-flow: column; justify-content: space-between; padding: 10px 14px; text-align: left; }
+  .team-emblem { width: 40px; height: 50px; font-size: 22px; }
+  .versus-mark { font-size: 20px; }
+  .map-cards { grid-template-columns: 1fr; }
+}
+
+/* ---------- Cho'zma (landscape) telefon: kichik balandlik */
+@media (orientation: landscape) and (max-height: 520px) {
+  .menu-overlay:has(.main-menu-card) { padding-left: max(clamp(14px, 5vw, 60px), env(safe-area-inset-left)); }
+
+  /* tugmalar 2 ustunda: hammasi bitta ekranga sig'adi */
+  .main-menu-card {
+    grid-template-columns: 1fr 1fr;
+    width: min(460px, 64vw);
+    gap: 7px;
+  }
+  .main-menu-heading, .menu-nav-button.primary, .main-language { grid-column: 1 / -1; }
+  .main-language { margin-top: 0; font-size: 12px; }
+  .main-language select { min-height: 36px; padding: 4px 10px; }
+  .menu-nav-button { min-height: 44px; padding: 6px 10px; font-size: 14px; }
+  .menu-nav-button.primary { min-height: 54px; font-size: 22px; }
+
+  /* qurol do'koni va boshqa kartalar past ekranda ixcham */
+  .shop-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .shop-card, .maps-card, .controls-card { width: min(100%, 760px); }
+  .settings-actions { bottom: -8px; }
+  .controls-card p { margin: 6px 0; font-size: 13px; }
+
+  .end-card { padding: 14px 22px 14px; gap: 5px; }
+  .end-card::before { font-size: 34px; }
+  .end-card strong { font-size: 30px; -webkit-text-stroke: 5px var(--navy); }
+  .end-card > span { font-size: 14px; }
+  .end-coins { font-size: 18px !important; }
+  .end-card button { padding: 8px 26px; font-size: 16px; }
+
+  /* kamera tugmalari o'ng tepada, jonli panelga tegmasin */
+  .hud { width: calc(100% - 380px); }
+  .coin-chip { font-size: 13px; padding: 2px 10px 2px 8px; }
+}
+
+/* ---------- Juda kichik telefonlar (iPhone SE va shunga o'xshash) */
+@media (max-width: 360px), (max-height: 340px) {
+  .main-menu-heading h1 { font-size: 28px; }
+  .menu-nav-button { font-size: 14px; }
+  .touch-actions { transform: scale(0.88); transform-origin: right bottom; }
+  .touch-stick { transform: scale(0.9); transform-origin: left bottom; }
+  .touch-stick.active { transform: translate(-50%, -50%) scale(0.9); }
+  .health-label { font-size: 7px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .touch-action { transition: none; }
+}
+
+/* Pastdagi "qanday o'ynash kerak" maslahat qatori olib tashlandi */
+.bottom-hint { display: none !important; }
