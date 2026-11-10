@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { MAX_TEAM, ONLINE_TEXT, defaultServerUrl, loadName, normalizeUrl, saveName } from "./online.js";
+import { MAX_TEAM, ONLINE_TEXT, defaultServerUrl, loadName, saveName } from "./online.js";
 
 export default function OnlineMenus({ online, language, text, menuPage, setMenuPage, onResume }) {
   const ot = ONLINE_TEXT[language];
   const [name, setName] = useState(loadName);
-  const [server, setServer] = useState(defaultServerUrl);
   const [code, setCode] = useState("");
 
   // Xonaga kirganda — xona sahifasi, chiqib ketganda — ulanish sahifasi
@@ -18,7 +17,7 @@ export default function OnlineMenus({ online, language, text, menuPage, setMenuP
   const go = (mode) => {
     const cleanName = name.trim();
     saveName(cleanName);
-    online.connect(normalizeUrl(server), cleanName, mode, code.trim().toUpperCase());
+    online.connect(defaultServerUrl(), cleanName, mode, code.trim().toUpperCase());
   };
 
   if (menuPage === "online") {
@@ -30,17 +29,6 @@ export default function OnlineMenus({ online, language, text, menuPage, setMenuP
             <span>{ot.name}</span>
             <input className="online-input" value={name} maxLength={14} onChange={(event) => setName(event.target.value)} />
           </label>
-          <label className="setting-row">
-            <span>{ot.server}</span>
-            <input
-              className="online-input"
-              value={server}
-              spellCheck={false}
-              autoCapitalize="none"
-              onChange={(event) => setServer(event.target.value)}
-            />
-          </label>
-          <p className="online-hint">{ot.serverHint}</p>
           <button className="menu-start" type="button" disabled={busy} onClick={() => go("create")}>
             {busy ? ot.connecting : ot.create}
           </button>

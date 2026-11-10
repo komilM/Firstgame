@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 
 export const MAX_TEAM = 3;
-const SERVER_KEY = "arena-server";
+// O'yin serveri (Render). Hamma o'yinchi shu manzilga avtomatik ulanadi.
+const DEFAULT_SERVER = "wss://firstgame-5lnh.onrender.com";
+// Kalit o'zgartirildi: eski saqlangan "ws://localhost:3001" endi e'tiborga olinmaydi
+const SERVER_KEY = "arena-server-v2";
 const NAME_KEY = "arena-name";
 
 export const ONLINE_TEXT = {
@@ -142,8 +145,7 @@ export function defaultServerUrl() {
   } catch {
     // saqlangan manzil yo‘q
   }
-  const secure = window.location.protocol === "https:";
-  return `${secure ? "wss" : "ws"}://${window.location.hostname || "localhost"}:3001`;
+  return DEFAULT_SERVER;
 }
 
 // "192.168.1.5" -> "ws://192.168.1.5:3001"
@@ -152,7 +154,9 @@ export function normalizeUrl(input) {
   if (!url) return defaultServerUrl();
   if (!/^wss?:\/\//i.test(url)) {
     url = `${window.location.protocol === "https:" ? "wss" : "ws"}://${url}`;
-    if (!/:\d+(\/|$)/.test(url.replace(/^wss?:\/\//i, ""))) url += ":3001";
+    const host = url.replace(/^wss?:\/\//i, "");
+    // Port faqat lokal manzillar (localhost, 192.168.x.x) uchun qo'shiladi
+    if (/^(localhost|\d{1,3}(\.\d{1,3}){3})(\/|$)/i.test(host) && !/:\d+(\/|$)/.test(host)) url += ":3001";
   }
   try {
     localStorage.setItem(SERVER_KEY, url);
