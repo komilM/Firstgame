@@ -47,14 +47,95 @@ function saveGame(state) {
   }
 }
 
-const ENEMY_ZONES = [[-22, -24], [22, -24], [-28, -4], [28, -4], [0, -32]];
-const ALL_ZONES = [...ENEMY_ZONES, [0, 11]];
-const KILLS_PER = 3;      // har bir raqib uchun nechta o'ldirish kerak
+/* ===================== QASRLAR VA BAYROQLAR ===================== */
+
+const CASTLE_W = 22;
+const CASTLE_D = 16;
+const FLOOR_Y = 0.15;
+const WALL_TOP = 6.2;
+const GATE_W = 5;
+const GATE_H = 4.2;
+const TOWER_R = 2.6;
+const STEPS = 11;
+const STEP_H = 0.4;
+const STEP_D = 0.55;
+const STAIR_X0 = -10.4;
+const STAIR_X1 = -7.4;
+const STAIR_Z0 = 4.2;
+const ROOF_Z1 = STAIR_Z0 - (STEPS - 1) * STEP_D;
+const ROOF_TOP = FLOOR_Y + STEP_H * STEPS;
+const ROOF_Z0 = -(CASTLE_D / 2 - 0.5);
+const ROOF_X = CASTLE_W / 2 - 0.5;
+const FLAG_LZ = -4.5;
+const STEP_UP = 0.7;
+const RAID_DELAY = 20;
+const PLAY_LIMIT = 50;
+
+// Qasrning mahalliy tizimi: darvoza +z tomonda. s = 1 (qizil) yoki -1 (ko'k, 180° burilgan)
+const CASTLES = [
+  { team: "red", x: 0, z: -40, w: CASTLE_W, d: CASTLE_D, s: 1 },
+  { team: "blue", x: 0, z: 40, w: CASTLE_W, d: CASTLE_D, s: -1 },
+];
+const RED_CASTLE = CASTLES[0];
+const BLUE_CASTLE = CASTLES[1];
+const cw = (c, lx, lz) => [c.x + c.s * lx, c.z + c.s * lz];
+const FLAG_HOME = {
+  red: (([x, z]) => ({ x, z }))(cw(RED_CASTLE, 0, FLAG_LZ)),
+  blue: (([x, z]) => ({ x, z }))(cw(BLUE_CASTLE, 0, FLAG_LZ)),
+};
+const insideCastle = (c, x, z) => Math.abs(x - c.x) < c.w / 2 - 0.4 && Math.abs(z - c.z) < c.d / 2 - 0.4;
+const nearCastle = (x, z, m = 0) => CASTLES.some((c) => Math.abs(x - c.x) < c.w / 2 + 3 + m && Math.abs(z - c.z) < c.d / 2 + 3 + m);
+
+// Zina va teroq — ustida yurish mumkin bo'lgan yuzalar
+const SURFACES = [];
+CASTLES.forEach((c) => {
+  const add = (lx0, lx1, lz0, lz1, top) => {
+    const [ax, az] = cw(c, lx0, lz0);
+    const [bx, bz] = cw(c, lx1, lz1);
+    SURFACES.push({ x0: Math.min(ax, bx), x1: Math.max(ax, bx), z0: Math.min(az, bz), z1: Math.max(az, bz), top });
+  };
+  for (let i = 1; i <= STEPS; i += 1) {
+    add(STAIR_X0, STAIR_X1, STAIR_Z0 - i * STEP_D, STAIR_Z0 - (i - 1) * STEP_D, FLOOR_Y + STEP_H * i);
+  }
+  add(-ROOF_X, ROOF_X, ROOF_Z0, ROOF_Z1, ROOF_TOP);
+});
+
+function castleObstacles(c) {
+  const out = [];
+  const add = (lx, lz, r) => {
+    const [x, z] = cw(c, lx, lz);
+    out.push({ x, z, r });
+  };
+  const hw = c.w / 2, hd = c.d / 2;
+  const nx = Math.round(c.w / 0.8), nz = Math.round(c.d / 0.8);
+
+  // Devorlar; darvoza ochiq qoldiriladi
+  for (let i = 0; i <= nx; i += 1) {
+    const t = -hw + (i * c.w) / nx;
+    add(t, -hd, 0.5);
+    if (Math.abs(t) >= GATE_W / 2) add(t, hd, 0.5);
+  }
+  for (let i = 1; i < nz; i += 1) {
+    const t = -hd + (i * c.d) / nz;
+    add(-hw, t, 0.5);
+    add(hw, t, 0.5);
+  }
+
+  // Burchak minoralari
+  [[-hw, -hd], [hw, -hd], [-hw, hd], [hw, hd]].forEach(([x, z]) => add(x, z, TOWER_R - 0.2));
+
+  // Tom ustunlari. Zina yo'lagiga to'siq qo'yilmaydi.
+  [-4, 4, 9.6].forEach((x) => add(x, ROOF_Z1 - 0.4, 0.45));
+  return out;
+}
+
+const ENEMY_ZONES = [[-22, -18], [22, -18], [-30, -4], [30, -4], [0, -27]];
+const ALL_ZONES = [...ENEMY_ZONES, [0, 29]];
 const AGGRO_RANGE = 16;   // bot shu masofadan boshlab hujum qiladi
 const STARTING_ENEMIES = Array.from({ length: 10 }, (_, i) => {
   const [zx, zz] = ENEMY_ZONES[i % 5];
   const k = Math.floor(i / 5);
-  return { id: i + 1, home: { x: zx, z: zz }, position: [zx + (k ? 2 : -2), 0, zz + (k ? 1.5 : 0)], health: 100 };
+  return { id: i + 1, raider: i === 0, home: { x: zx, z: zz }, position: [zx + (k ? 2 : -2), 0, zz + (k ? 1.5 : 0)], health: 100 };
 });
 
 const UI_TEXT = {
@@ -113,8 +194,14 @@ const UI_TEXT = {
     victory: "G‘ALABA!",
     defeat: "MAG‘LUBIYAT",
     lost: "Joning tugadi.",
-    won: "Barcha raqiblarni yengding!",
+    won: "Raqib bayrog‘ini qasringga olib keldin!",
     playAgain: "Qayta o‘ynash",
+    flagLabel: "BAYROQ",
+    goalSteal: "Qizil qasrdan bayroqni ol!",
+    goalReturn: "Bayroqni ko‘k qasringga olib bor!",
+    goalStolen: "Bayrog‘ing o‘g‘irlandi! Raqibni to‘xtat!",
+    goalInfo: "Maqsad: raqib qasridagi bayroqni olib, o‘z qasringga keltir. Qasrga kirsa bo‘ladi, zina orqali teroqqa chiqsa ham bo‘ladi.",
+    flagLost: "Raqib bayrog‘ingni olib ketdi.",
   },
   ru: {
     title: "АРЕНА БОЯ",
@@ -171,8 +258,14 @@ const UI_TEXT = {
     victory: "ПОБЕДА!",
     defeat: "ПОРАЖЕНИЕ",
     lost: "У тебя закончились жизни.",
-    won: "Ты победил всех противников!",
+    won: "Ты принёс флаг врага в свой замок!",
     playAgain: "Играть снова",
+    flagLabel: "ФЛАГ",
+    goalSteal: "Забери флаг из красного замка!",
+    goalReturn: "Отнеси флаг в свой синий замок!",
+    goalStolen: "Твой флаг украден! Останови врага!",
+    goalInfo: "Цель: забрать флаг из замка врага и принести в свой замок. В замок можно войти, а по лестнице подняться на террасу.",
+    flagLost: "Враг унёс твой флаг.",
   },
   en: {
     title: "BATTLE ARENA",
@@ -229,23 +322,28 @@ const UI_TEXT = {
     victory: "VICTORY!",
     defeat: "DEFEAT",
     lost: "You ran out of health.",
-    won: "You defeated all opponents!",
+    won: "You brought the enemy flag to your castle!",
     playAgain: "Play again",
+    flagLabel: "FLAG",
+    goalSteal: "Take the flag from the red castle!",
+    goalReturn: "Carry the flag to your blue castle!",
+    goalStolen: "Your flag was stolen! Stop the raider!",
+    goalInfo: "Goal: grab the flag from the enemy castle and bring it to your own. You can walk inside castles and climb the stairs to the terrace.",
+    flagLost: "The enemy took your flag.",
   },
 };
 
 const PLATFORM = { x: 0, z: -10, r: 5.2, h: 0.15 };
 
 const BUILDINGS = [
-  { x: -15, z: -12, w: 8, d: 7, door: "S" },
-  { x: 16, z: -14, w: 8, d: 8, door: "W" },
-  { x: -17, z: 9, w: 7, d: 7, door: "E" },
-  { x: 17, z: 6, w: 8, d: 7, door: "N" },
+  { x: -17, z: -10, w: 8, d: 7, door: "E" },
+  { x: 17, z: 8, w: 8, d: 7, door: "W" },
 ];
 const PADS = [
   PLATFORM,
   ...ALL_ZONES.map(([x, z]) => ({ x, z, r: 3.4, h: 0.15 })),
   ...BUILDINGS.map((b) => ({ x: b.x, z: b.z, r: 6, h: 0.15 })),
+  ...CASTLES.map((c) => ({ x: c.x, z: c.z, r: 15.5, h: 0.15 })),
 ];
 const nearBuilding = (x, z, m = 0) => BUILDINGS.some((b) => Math.hypot(b.x - x, b.z - z) < 6.5 + m);
 
@@ -271,6 +369,15 @@ function terrainHeight(x, z) {
   let h = Math.sin(x * 0.12 + z * 0.04) * 0.36 + Math.cos(z * 0.14 - x * 0.05) * 0.24 + Math.sin(x * 0.29 + z * 0.23) * 0.075;
   for (const p of PADS) {
     h = THREE.MathUtils.lerp(p.h, h, THREE.MathUtils.smoothstep(Math.hypot(x - p.x, z - p.z), p.r, p.r + 2.2));
+  }
+  return h;
+}
+
+// Oyoq ostidagi eng baland yuza: yer, zina yoki teroq (faqat bir zumda chiqa oladigan balandlikkacha)
+function supportHeight(x, z, y) {
+  let h = terrainHeight(x, z);
+  for (const s of SURFACES) {
+    if (x >= s.x0 && x <= s.x1 && z >= s.z0 && z <= s.z1 && s.top <= y + STEP_UP && s.top > h) h = s.top;
   }
   return h;
 }
@@ -304,7 +411,7 @@ function seeded(seed) {
   return () => (s = (s * 16807) % 2147483647) / 2147483647;
 }
 
-// To'siqlardan (daraxt, tosh, ustun) o'tib ketmaslik uchun
+// To'siqlardan (daraxt, tosh, ustun, devor) o'tib ketmaslik uchun
 function pushOut(pos, radius) {
   for (const o of activeObstacles) {
     const dx = pos.x - o.x;
@@ -331,6 +438,7 @@ function getWorld(mapId) {
   const free = (x, z, gap) =>
     obstacles.every((o) => Math.hypot(o.x - x, o.z - z) > o.r + gap) &&
     !nearBuilding(x, z, gap) &&
+    !nearCastle(x, z, gap) &&
     ALL_ZONES.every(([zx, zz]) => Math.hypot(zx - x, zz - z) > 4 + gap);
 
   const addTree = (x, z, s, solid) => {
@@ -354,7 +462,15 @@ function getWorld(mapId) {
   };
 
   BUILDINGS.forEach((b) => obstacles.push(...wallCircles(b)));
-  w.packs = BUILDINGS.map((b) => ({ x: b.x, z: b.z, t: 0 }));
+  CASTLES.forEach((c) => obstacles.push(...castleObstacles(c)));
+  // sog'liq paketlari: uylarda va qasrlarning orqa xonasida
+  w.packs = [
+    ...BUILDINGS.map((b) => ({ x: b.x, z: b.z, t: 0 })),
+    ...CASTLES.map((c) => {
+      const [x, z] = cw(c, 6.5, -5);
+      return { x, z, t: 0 };
+    }),
+  ];
 
   // markazdagi duel doirasi: 6 ta tik tosh
   [0, 45, 135, 180, 225, 315].forEach((deg) => {
@@ -366,18 +482,18 @@ function getWorld(mapId) {
 
   let tries = 0;
   let placed = 0;
-  while (placed < 16 && tries++ < 500) {
-    const x = (rand() - 0.5) * 68;
-    const z = -22 + rand() * 31;
+  while (placed < 20 && tries++ < 600) {
+    const x = (rand() - 0.5) * 80;
+    const z = -28 + rand() * 56;
     if (Math.abs(x) < 6 || !free(x, z, 3)) continue;
     addTree(x, z, 0.9 + rand() * 0.6, true);
     placed += 1;
   }
   tries = 0;
   placed = 0;
-  while (placed < 10 && tries++ < 500) {
-    const x = (rand() - 0.5) * 68;
-    const z = -22 + rand() * 31;
+  while (placed < 12 && tries++ < 600) {
+    const x = (rand() - 0.5) * 80;
+    const z = -28 + rand() * 56;
     if (Math.abs(x) < 5 || !free(x, z, 2)) continue;
     const s = 0.8 + rand() * 1.1;
     w.rocks.push(M(x, terrainHeight(x, z) + 0.35 * s, z, s * 1.2, s * 0.8, s, rand() * 3));
@@ -390,25 +506,22 @@ function getWorld(mapId) {
   for (let i = 0; i < border; i += 1) {
     const angle = rand() * Math.PI * 2;
     const k = 1 / Math.max(Math.abs(Math.cos(angle)), Math.abs(Math.sin(angle)));
-    const r = (40 + rand() * 8) * k;
-    const x = Math.cos(angle) * r;
-    const z = Math.sin(angle) * r;
-    if (z < -38 && Math.abs(x) < 22) continue;
-    addTree(x, z, 1.1 + rand() * 0.9, false);
+    const r = (53 + rand() * 7) * k;
+    addTree(Math.cos(angle) * r, Math.sin(angle) * r, 1.1 + rand() * 0.9, false);
   }
 
-  const tuftCount = isTouch ? 160 : 320;
+  const tuftCount = isTouch ? 200 : 400;
   for (let i = 0; i < tuftCount; i += 1) {
-    const x = (rand() - 0.5) * 74;
-    const z = (rand() - 0.5) * 74;
-    if (Math.abs(x) < 3 || nearBuilding(x, z)) continue;
+    const x = (rand() - 0.5) * 92;
+    const z = (rand() - 0.5) * 92;
+    if (Math.abs(x) < 3 || nearBuilding(x, z) || nearCastle(x, z)) continue;
     w.tufts.push(M(x, terrainHeight(x, z) + 0.2, z, 0.5 + rand() * 0.5, 0.5 + rand() * 0.8, 0.5 + rand() * 0.5, rand() * 3));
   }
   if (mapId === "meadow") {
-    for (let i = 0; i < 140; i += 1) {
-      const x = (rand() - 0.5) * 74;
-      const z = (rand() - 0.5) * 74;
-      if (Math.abs(x) < 3 || nearBuilding(x, z)) continue;
+    for (let i = 0; i < 180; i += 1) {
+      const x = (rand() - 0.5) * 92;
+      const z = (rand() - 0.5) * 92;
+      if (Math.abs(x) < 3 || nearBuilding(x, z) || nearCastle(x, z)) continue;
       w.flowers.push(M(x, terrainHeight(x, z) + 0.28, z, 1, 1, 1));
       w.flowerColors.push(flowerPalette[Math.floor(rand() * 3)]);
     }
@@ -508,6 +621,291 @@ function HealthPack({ pack }) {
   );
 }
 
+/* Qasr: darvozasi +z tomonda (mahalliy tizim). Ichiga kirsa bo'ladi, chap devor bo'ylab zina teroqqa olib chiqadi. */
+function Castle({ c, stone, accent }) {
+  const W = c.w, D = c.d, T = 1;
+  const hw = W / 2, hd = D / 2;
+  const wallH = WALL_TOP + 0.4;
+  const wallY = (WALL_TOP - 0.4) / 2;
+  const seg = (W - GATE_W) / 2;
+  const off = (GATE_W + seg) / 2;
+  const lintelH = WALL_TOP - GATE_H;
+  const roofDepth = ROOF_Z1 - ROOF_Z0;
+  const roofZ = (ROOF_Z0 + ROOF_Z1) / 2;
+  const pillarH = ROOF_TOP - 0.4 - FLOOR_Y;
+  const wood = "#5a3d26";
+  const dark = "#1c222b";
+
+  const merlons = [];
+  for (let t = -hw + 1; t <= hw - 0.99; t += 1.6) {
+    merlons.push([t, -hd, 0.9, T * 0.9]);
+    if (Math.abs(t) > GATE_W / 2 + 0.4) merlons.push([t, hd, 0.9, T * 0.9]);
+  }
+  for (let t = -hd + 1.6; t <= hd - 1.5; t += 1.6) {
+    merlons.push([-hw, t, T * 0.9, 0.9]);
+    merlons.push([hw, t, T * 0.9, 0.9]);
+  }
+
+  const railDz = ROOF_Z1 - STAIR_Z0;
+  const railDy = STEP_H * (STEPS - 1);
+  const railL = Math.hypot(railDz, railDy);
+  const railAng = Math.atan2(railDy, -railDz);
+  const railMidZ = STAIR_Z0 + railDz / 2;
+  const railMidY = FLOOR_Y + STEP_H + railDy / 2;
+
+  return (
+    <group position={[c.x, 0, c.z]} rotation={[0, c.s === 1 ? 0 : Math.PI, 0]}>
+      {/* Pol va gilam */}
+      <mesh position={[0, FLOOR_Y + 0.03, 0]} receiveShadow>
+        <boxGeometry args={[W - 1, 0.06, D - 1]} />
+        <meshStandardMaterial color="#9a9486" roughness={1} />
+      </mesh>
+      <mesh position={[0, FLOOR_Y + 0.07, 0]} receiveShadow>
+        <boxGeometry args={[2.4, 0.02, D - 2]} />
+        <meshStandardMaterial color={accent} roughness={0.9} />
+      </mesh>
+
+      {/* Devorlar */}
+      <mesh position={[0, wallY, -hd]} castShadow receiveShadow>
+        <boxGeometry args={[W, wallH, T]} />
+        <meshStandardMaterial color={stone} roughness={1} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <mesh position={[side * hw, wallY, 0]} castShadow receiveShadow>
+            <boxGeometry args={[T, wallH, D]} />
+            <meshStandardMaterial color={stone} roughness={1} />
+          </mesh>
+          <mesh position={[side * off, wallY, hd]} castShadow receiveShadow>
+            <boxGeometry args={[seg, wallH, T]} />
+            <meshStandardMaterial color={stone} roughness={1} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Darvoza */}
+      <mesh position={[0, GATE_H + lintelH / 2, hd]} castShadow>
+        <boxGeometry args={[GATE_W, lintelH, T]} />
+        <meshStandardMaterial color={stone} roughness={1} />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <mesh key={`gp${side}`} position={[side * GATE_W / 2, FLOOR_Y + GATE_H / 2, hd]} castShadow>
+          <boxGeometry args={[0.5, GATE_H, T + 0.2]} />
+          <meshStandardMaterial color={wood} roughness={0.85} />
+        </mesh>
+      ))}
+      <mesh position={[0, GATE_H - 0.1, hd]} castShadow>
+        <boxGeometry args={[GATE_W + 0.5, 0.5, T + 0.2]} />
+        <meshStandardMaterial color={wood} roughness={0.85} />
+      </mesh>
+
+      {/* Darvoza minoralari */}
+      {[-1, 1].map((side) => (
+        <group key={`gt${side}`} position={[side * (GATE_W / 2 + 1.5), 0, hd + 0.8]}>
+          <mesh position={[0, 4.4, 0]} castShadow receiveShadow>
+            <cylinderGeometry args={[1.4, 1.55, 9.6, 10]} />
+            <meshStandardMaterial color={stone} roughness={1} />
+          </mesh>
+          <mesh position={[0, 10.4, 0]} castShadow>
+            <coneGeometry args={[1.9, 2.4, 10]} />
+            <meshStandardMaterial color={accent} roughness={0.8} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Devor tepasidagi tishlar */}
+      {merlons.map(([x, z, sx, sz], i) => (
+        <mesh key={i} position={[x, WALL_TOP + 0.25, z]} castShadow>
+          <boxGeometry args={[sx, 0.5, sz]} />
+          <meshStandardMaterial color={stone} roughness={1} />
+        </mesh>
+      ))}
+
+      {/* Rangli bezak lentasi */}
+      {[[0, -hd, W + 0.1, T + 0.12], [-hw, 0, T + 0.12, D + 0.1], [hw, 0, T + 0.12, D + 0.1]].map(([x, z, sx, sz], i) => (
+        <mesh key={`b${i}`} position={[x, WALL_TOP - 1.3, z]}>
+          <boxGeometry args={[sx, 0.35, sz]} />
+          <meshStandardMaterial color={accent} roughness={0.8} />
+        </mesh>
+      ))}
+      {[-1, 1].map((side) => (
+        <mesh key={`bf${side}`} position={[side * off, WALL_TOP - 1.3, hd]}>
+          <boxGeometry args={[seg, 0.35, T + 0.12]} />
+          <meshStandardMaterial color={accent} roughness={0.8} />
+        </mesh>
+      ))}
+
+      {/* Derazalar */}
+      {[-8.5, 8.5].map((x) => (
+        <mesh key={`w${x}`} position={[x, 4.2, -hd]}>
+          <boxGeometry args={[0.6, 1.3, T + 0.06]} />
+          <meshStandardMaterial color={dark} roughness={1} />
+        </mesh>
+      ))}
+      {[-1, 1].flatMap((side) => [-4.5, 0, 4.5].map((z) => (
+        <mesh key={`s${side}${z}`} position={[side * hw, 3.4, z]}>
+          <boxGeometry args={[T + 0.06, 1.2, 0.45]} />
+          <meshStandardMaterial color={dark} roughness={1} />
+        </mesh>
+      )))}
+
+      {/* Burchak minoralari */}
+      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz]) => (
+        <group key={`${sx}${sz}`} position={[sx * hw, 0, sz * hd]}>
+          <mesh position={[0, 5.4, 0]} castShadow receiveShadow>
+            <cylinderGeometry args={[TOWER_R - 0.2, TOWER_R + 0.1, 12, 12]} />
+            <meshStandardMaterial color={stone} roughness={1} />
+          </mesh>
+          <mesh position={[0, 9.4, 0]}>
+            <cylinderGeometry args={[TOWER_R + 0.15, TOWER_R + 0.15, 0.35, 12]} />
+            <meshStandardMaterial color={accent} roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 11.6, 0]} castShadow>
+            <cylinderGeometry args={[TOWER_R + 0.35, TOWER_R + 0.35, 0.5, 12]} />
+            <meshStandardMaterial color={stone} roughness={1} />
+          </mesh>
+          <mesh position={[0, 13.55, 0]} castShadow>
+            <coneGeometry args={[TOWER_R + 0.5, 3.4, 12]} />
+            <meshStandardMaterial color={accent} roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 15.4, 0]}>
+            <sphereGeometry args={[0.18, 10, 8]} />
+            <meshStandardMaterial color="#d8a73f" metalness={0.8} roughness={0.3} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Zina pog'onalari */}
+      {Array.from({ length: STEPS }, (_, k) => {
+        const i = k + 1;
+        const h = STEP_H * i;
+        return (
+          <mesh key={i} position={[(STAIR_X0 + STAIR_X1) / 2, FLOOR_Y + h / 2, STAIR_Z0 - (i - 0.5) * STEP_D]} castShadow receiveShadow>
+            <boxGeometry args={[STAIR_X1 - STAIR_X0, h, STEP_D]} />
+            <meshStandardMaterial color={i % 2 ? "#b8b0a0" : "#a49c8c"} roughness={1} />
+          </mesh>
+        );
+      })}
+      {/* Zina yonidagi qiya past panjara */}
+      <mesh position={[STAIR_X1 + 0.12, railMidY + 0.4, railMidZ]} rotation={[railAng, 0, 0]} castShadow>
+        <boxGeometry args={[0.24, 0.8, railL]} />
+        <meshStandardMaterial color="#8c8678" roughness={1} />
+      </mesh>
+
+      {/* Tom va ustunlar */}
+      <mesh position={[0, ROOF_TOP - 0.2, roofZ]} castShadow receiveShadow>
+        <boxGeometry args={[ROOF_X * 2, 0.4, roofDepth]} />
+        <meshStandardMaterial color="#8c8678" roughness={1} />
+      </mesh>
+      <mesh position={[0, ROOF_TOP - 0.55, ROOF_Z1]}>
+        <boxGeometry args={[ROOF_X * 2, 0.3, 0.5]} />
+        <meshStandardMaterial color={accent} roughness={0.8} />
+      </mesh>
+      {[-4, 4, 9.6].map((x) => (
+        <mesh key={x} position={[x, FLOOR_Y + pillarH / 2, ROOF_Z1 - 0.4]} castShadow>
+          <cylinderGeometry args={[0.38, 0.46, pillarH, 8]} />
+          <meshStandardMaterial color={stone} roughness={1} />
+        </mesh>
+      ))}
+
+      {/* Bayroq poydevori */}
+      <mesh position={[0, FLOOR_Y + 0.12, FLAG_LZ]} receiveShadow>
+        <cylinderGeometry args={[1.7, 1.9, 0.25, 16]} />
+        <meshStandardMaterial color="#8d867a" roughness={1} />
+      </mesh>
+      <mesh position={[0, FLOOR_Y + 0.25, FLAG_LZ]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.9, 1.1, 0.5, 12]} />
+        <meshStandardMaterial color="#7b7468" roughness={1} />
+      </mesh>
+      <mesh position={[0, FLOOR_Y + 0.52, FLAG_LZ]}>
+        <cylinderGeometry args={[0.7, 0.7, 0.04, 16]} />
+        <meshStandardMaterial color={accent} roughness={0.5} metalness={0.4} />
+      </mesh>
+
+      {/* Mash'al */}
+      {[[-2.6, -hd + 1.2], [2.6, -hd + 1.2], [-GATE_W / 2 - 0.8, hd - 1.2], [GATE_W / 2 + 0.8, hd - 1.2]].map(([x, z], i) => (
+        <group key={`t${i}`} position={[x, FLOOR_Y, z]}>
+          <mesh position={[0, 1.1, 0]} castShadow>
+            <cylinderGeometry args={[0.06, 0.09, 2.2, 6]} />
+            <meshStandardMaterial color="#3b3430" roughness={0.9} />
+          </mesh>
+          <mesh position={[0, 2.3, 0]}>
+            <cylinderGeometry args={[0.28, 0.16, 0.25, 8]} />
+            <meshStandardMaterial color="#4a403a" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, 2.68, 0]}>
+            <coneGeometry args={[0.2, 0.55, 7]} />
+            <meshBasicMaterial color="#ff9a2e" toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Tashqi va ichki bayroqchalar */}
+      {[-7.5, 7.5].map((x) => (
+        <mesh key={`o${x}`} position={[x, 4.2, hd + T / 2 + 0.02]}>
+          <planeGeometry args={[2, 3.6]} />
+          <meshStandardMaterial color={accent} roughness={0.8} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+      {[-5, 5].map((x) => (
+        <mesh key={`i${x}`} position={[x, 3.6, -hd + T / 2 + 0.02]}>
+          <planeGeometry args={[1.8, 3]} />
+          <meshStandardMaterial color={accent} roughness={0.8} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// Bayroq: poydevorda turadi, olib ketilsa egasi bilan birga yuradi. Nur ustuni uni uzoqdan ko'rsatadi.
+function CtfFlag({ team, flagsRef, playerRef }) {
+  const group = useRef();
+  const beam = useRef();
+  const home = FLAG_HOME[team];
+  const color = team === "red" ? "#e0283f" : "#2f6fe0";
+  const geometry = useMemo(() => new THREE.PlaneGeometry(1.4, 0.9, 12, 1), []);
+  useFrame((state) => {
+    const g = group.current;
+    if (!g) return;
+    const carrier = flagsRef.current[team].carrier;
+    if (!carrier) {
+      g.position.set(home.x, FLOOR_Y + 0.52, home.z);
+    } else if (carrier === playerRef.current) {
+      g.position.set(carrier.x + Math.sin(carrier.yaw) * 0.6, carrier.y, carrier.z + Math.cos(carrier.yaw) * 0.6);
+    } else {
+      g.position.set(carrier.position.x + 0.45, carrier.position.y + 0.1, carrier.position.z + 0.25);
+    }
+    g.scale.setScalar(carrier ? 0.8 : 1);
+    if (beam.current) beam.current.visible = carrier !== playerRef.current;
+    const pos = geometry.attributes.position;
+    const t = state.clock.elapsedTime;
+    for (let i = 0; i < pos.count; i += 1) {
+      const u = (pos.getX(i) + 0.7) / 1.4;
+      pos.setZ(i, Math.sin(u * 5 - t * 4) * 0.14 * u);
+    }
+    pos.needsUpdate = true;
+  });
+  return (
+    <group ref={group} position={[home.x, FLOOR_Y + 0.52, home.z]}>
+      <mesh position={[0, 1.7, 0]} castShadow>
+        <cylinderGeometry args={[0.05, 0.06, 3.4, 8]} />
+        <meshStandardMaterial color="#5a3d26" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, 3.45, 0]}>
+        <sphereGeometry args={[0.1, 10, 8]} />
+        <meshStandardMaterial color="#d8a73f" metalness={0.8} roughness={0.3} />
+      </mesh>
+      <mesh geometry={geometry} position={[0.72, 2.9, 0]} castShadow>
+        <meshStandardMaterial color={color} roughness={0.6} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh ref={beam} position={[0, 7, 0]}>
+        <cylinderGeometry args={[0.45, 0.45, 14, 12, 1, true]} />
+        <meshBasicMaterial color={color} transparent opacity={0.17} depthWrite={false} fog={false} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
 function World({ mapId }) {
   const w = getWorld(mapId);
   const desert = mapId === "desert";
@@ -554,50 +952,20 @@ function World({ mapId }) {
         </mesh>
       ))}
 
-      {[-3, 3].flatMap((x) => [[x, -30], [x, 9]]).map(([x, z]) => (
+      {[-3.5, 3.5].flatMap((x) => [[x, -28.5], [x, 28.5]]).map(([x, z]) => (
         <Brazier key={`${x}${z}`} x={x} z={z} />
       ))}
 
-      {/* Qizil qal'a (raqiblar bazasi) */}
-      {[-10.5, 10.5].map((x) => (
-        <mesh key={x} position={[x, 2.5, -46]} castShadow>
-          <boxGeometry args={[13, 7, 3]} />
-          <meshStandardMaterial color={stone} roughness={1} />
-        </mesh>
-      ))}
-      <mesh position={[0, 2, -48.4]}>
-        <boxGeometry args={[7.4, 6, 0.3]} />
-        <meshStandardMaterial color="#1a1410" roughness={1} />
-      </mesh>
-      {[-18, -4.6, 4.6, 18].map((x, i) => {
-        const big = i === 0 || i === 3;
-        return (
-          <group key={x} position={[x, 0, -46]}>
-            <mesh position={[0, big ? 4.5 : 3.5, 0]} castShadow>
-              <cylinderGeometry args={big ? [2.5, 2.7, 11, 10] : [1.8, 2, 9, 10]} />
-              <meshStandardMaterial color={stone} roughness={1} />
-            </mesh>
-            <mesh position={[0, big ? 11.8 : 9.8, 0]} castShadow>
-              <coneGeometry args={big ? [3.2, 3.8, 10] : [2.4, 3.2, 10]} />
-              <meshStandardMaterial color="#b3263a" roughness={0.8} />
-            </mesh>
-          </group>
-        );
-      })}
-      {[-9, 9].map((x) => (
-        <mesh key={x} position={[x, 4.5, -44.4]}>
-          <planeGeometry args={[1.8, 3.2]} />
-          <meshStandardMaterial color="#c9283f" roughness={0.8} side={THREE.DoubleSide} />
-        </mesh>
-      ))}
+      <Castle c={RED_CASTLE} stone={stone} accent="#b3263a" />
+      <Castle c={BLUE_CASTLE} stone={stone} accent="#2a5fd0" />
 
       {BUILDINGS.map((b, i) => (
         <Building key={i} b={b} wall={desert ? "#d9c496" : snow ? "#c5d3df" : "#b9b2a2"} roof={snow ? "#e8eef4" : "#8c3b32"} />
       ))}
       {w.packs.map((p, i) => <HealthPack key={i} pack={p} />)}
 
-      {/* Ko'k lager (sizning bazangiz) */}
-      {[[-9, 16, "#3f6fd0"], [9.5, 17, "#d9d2c0"]].map(([x, z, color]) => (
+      {/* Ko'k lager chodirlari */}
+      {[[-15, 25, "#3f6fd0"], [15, 25, "#d9d2c0"]].map(([x, z, color]) => (
         <mesh key={x} position={[x, terrainHeight(x, z) + 1.3, z]} castShadow>
           <coneGeometry args={[2.3, 2.8, 6]} />
           <meshStandardMaterial color={color} roughness={0.9} />
@@ -622,9 +990,9 @@ function Terrain({ mapId }) {
       const n = (Math.sin(x * 0.31) + Math.cos(z * 0.27) + Math.sin((x + z) * 0.17)) / 6 + 0.5;
       c.copy(lo).lerp(hi, THREE.MathUtils.clamp(n, 0, 1));
       const pathD = Math.abs(x - Math.sin(z * 0.08) * 2);
-      const onPath = z > -36 && z < 14 ? THREE.MathUtils.smoothstep(3.4 - pathD, 0, 1.6) : 0;
+      const onPath = z > -31 && z < 31 ? THREE.MathUtils.smoothstep(3.4 - pathD, 0, 1.6) : 0;
       c.lerp(dirt, onPath * 0.85);
-      c.lerp(edge, THREE.MathUtils.smoothstep(Math.max(Math.abs(x), Math.abs(z)), 34, 50));
+      c.lerp(edge, THREE.MathUtils.smoothstep(Math.max(Math.abs(x), Math.abs(z)), 46, 60));
       c.multiplyScalar(0.92 + 0.14 * (Math.abs(Math.sin(index * 12.9898) * 43758.5453) % 1));
       colors.set([c.r, c.g, c.b], index * 3);
     }
@@ -946,7 +1314,69 @@ function SwordModel({ scale = 1, accent = "#d8b15a" }) {
   );
 }
 
-function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDamageEnemy, remote = false, pausedRef }) {
+// Askar oyog'i (AI jangchilar uchun)
+function FighterLeg({ ally }) {
+  return (
+    <>
+      <mesh position={[0, -0.2, 0]} castShadow>
+        <boxGeometry args={[0.27, 0.43, 0.28]} />
+        <meshStandardMaterial color={ally ? "#174a78" : "#70272c"} roughness={0.87} />
+      </mesh>
+      <mesh position={[0, -0.43, 0.06]} castShadow>
+        <boxGeometry args={[0.3, 0.16, 0.4]} />
+        <meshStandardMaterial color="#41332d" roughness={0.8} />
+      </mesh>
+      <mesh position={[0, -0.51, 0.24]} castShadow>
+        <boxGeometry args={[0.31, 0.11, 0.12]} />
+        <meshStandardMaterial color="#24292c" roughness={0.72} />
+      </mesh>
+      <mesh position={[0, -0.31, 0.11]} castShadow>
+        <boxGeometry args={[0.29, 0.26, 0.3]} />
+        <meshStandardMaterial color="#888f90" metalness={0.35} roughness={0.53} />
+      </mesh>
+    </>
+  );
+}
+
+// Raider (bayroq o'g'risi) uchun yo'l nuqtalari
+const STEAL_PATH = [[0, 24], [0, 36], [FLAG_HOME.blue.x, FLAG_HOME.blue.z]];
+const FLEE_PATH = [[0, 36], [0, 25], [0, -25], [0, -36]];
+
+function raidTarget(enemy, body, flagsRef, delta) {
+  const f = flagsRef.current;
+  if (f.over) return null;
+  const r = (enemy.raid ||= { wait: RAID_DELAY, i: 0, has: false });
+  const carrying = f.blue.carrier === enemy;
+  if (r.has !== carrying) {
+    r.has = carrying;
+    r.i = 0;
+  }
+  if (!carrying) {
+    if (r.wait > 0) {
+      r.wait -= delta;
+      return null;
+    }
+    if (f.blue.carrier) return null;
+  }
+  const path = carrying ? FLEE_PATH : STEAL_PATH;
+  const [wx, wz] = path[Math.min(r.i, path.length - 1)];
+  const d = Math.hypot(wx - body.position.x, wz - body.position.z);
+  if (carrying) {
+    if (insideCastle(RED_CASTLE, body.position.x, body.position.z)) {
+      enemy.onCapture?.();
+      return null;
+    }
+  } else if (r.i === path.length - 1 && d < 1.6) {
+    f.blue.carrier = enemy;
+    r.has = true;
+    r.i = 0;
+    return null;
+  }
+  if (d < 1.4 && r.i < path.length - 1) r.i += 1;
+  return { x: wx, z: wz };
+}
+
+function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDamageEnemy, remote = false, pausedRef, flagsRef }) {
   const fighter = useRef();
   const leftArm = useRef();
   const rightArm = useRef();
@@ -975,7 +1405,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDama
     const body = fighter.current;
     if (!body || gone) return;
     body.rotation.order = "YXZ";
-    // Menyu ochiq bo'lsa AI jangi to'xtab turadi
+    // Menyu ochiq bo'lsa yoki o'yin tugagan bo'lsa AI to'xtab turadi
     if (!remote && pausedRef?.current) return;
 
     if (enemy.health > lastHealth.current) lastHealth.current = enemy.health;
@@ -992,6 +1422,8 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDama
     }
 
     if (enemy.health <= 0) {
+      // o'lgan raider bayroqni tashlaydi — u o'z joyiga qaytadi
+      if (flagsRef?.current && flagsRef.current.blue.carrier === enemy) flagsRef.current.blue.carrier = null;
       deathT.current += delta;
       body.rotation.x = -Math.min(deathT.current / 0.5, 1) * 1.5;
       body.position.y = terrainHeight(body.position.x, body.position.z) - Math.max(0, deathT.current - 1.2) * 0.7;
@@ -1002,6 +1434,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDama
           enemy.health = 100;
           lastHealth.current = 100;
           deathT.current = 0;
+          enemy.raid = null;
           body.rotation.x = 0;
           body.position.set(enemy.home.x + (Math.random() - 0.5) * 2, terrainHeight(enemy.home.x, enemy.home.z), enemy.home.z + (Math.random() - 0.5) * 2);
           enemy.position.copy(body.position);
@@ -1078,6 +1511,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDama
     }
 
     let hunting = true;
+    let raiding = false;
     if (!ally) {
       let bestD = Infinity;
       const p = targetRef.current;
@@ -1099,6 +1533,18 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDama
         }
         target = wp;
       }
+      // Raider: yaqinda dushman bo'lmasa (yoki bayroq ko'tarib turgan bo'lsa) bayroqqa yuguradi
+      if (enemy.raider && flagsRef) {
+        const carrying = flagsRef.current.blue.carrier === enemy;
+        if (carrying || bestD > 7) {
+          const rt = raidTarget(enemy, body, flagsRef, delta);
+          if (rt) {
+            target = rt;
+            hunting = false;
+            raiding = true;
+          }
+        }
+      }
     }
 
     const dx = target.x - body.position.x;
@@ -1116,7 +1562,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDama
         if (distance <= reach + 0.6) {
           if (ally) onDamageEnemy(strike.opponent, 10);
           else if (strike.opponent) strike.opponent.health = Math.max(0, strike.opponent.health - 9);
-          else enemy.onAttack(9);
+          else if (Math.abs((targetRef.current.y ?? body.position.y) - body.position.y) < 2.4) enemy.onAttack(9);
         }
       }
     } else if (hunting && distance <= reach && hitTimer.current === 0) {
@@ -1127,7 +1573,7 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDama
 
     const stepSpeed = attacking
       ? (swingT.current > 0.3 && swingT.current < 0.5 && distance > 1 ? 1.6 : 0)
-      : (distance > (hunting ? reach : 0.8) ? (ally ? 2.7 : hunting ? 2.2 : 1.3) : 0);
+      : (distance > (hunting ? reach : 0.8) ? (ally ? 2.7 : raiding ? 2.6 : hunting ? 2.2 : 1.3) : 0);
     body.position.x += (dx / distance) * stepSpeed * delta + knock.current.x * delta;
     body.position.z += (dz / distance) * stepSpeed * delta + knock.current.z * delta;
     knock.current.x *= 0.9;
@@ -1364,40 +1810,10 @@ function Fighter({ enemy, targetRef, ally = false, enemiesRef, alliesRef, onDama
         </group>
       </group>
       <group ref={leftLeg} position={[-0.16, 0.47, 0]}>
-        <mesh position={[0, -0.2, 0]} castShadow>
-          <boxGeometry args={[0.27, 0.43, 0.28]} />
-          <meshStandardMaterial color={ally ? "#174a78" : "#70272c"} roughness={0.87} />
-        </mesh>
-        <mesh position={[0, -0.43, 0.06]} castShadow>
-          <boxGeometry args={[0.3, 0.16, 0.4]} />
-          <meshStandardMaterial color="#41332d" roughness={0.8} />
-        </mesh>
-        <mesh position={[0, -0.51, 0.24]} castShadow>
-          <boxGeometry args={[0.31, 0.11, 0.12]} />
-          <meshStandardMaterial color="#24292c" roughness={0.72} />
-        </mesh>
-        <mesh position={[0, -0.31, 0.11]} castShadow>
-          <boxGeometry args={[0.29, 0.26, 0.3]} />
-          <meshStandardMaterial color="#888f90" metalness={0.35} roughness={0.53} />
-        </mesh>
+        <FighterLeg ally={ally} />
       </group>
       <group ref={rightLeg} position={[0.16, 0.47, 0]}>
-        <mesh position={[0, -0.2, 0]} castShadow>
-          <boxGeometry args={[0.27, 0.43, 0.28]} />
-          <meshStandardMaterial color={ally ? "#174a78" : "#70272c"} roughness={0.87} />
-        </mesh>
-        <mesh position={[0, -0.43, 0.06]} castShadow>
-          <boxGeometry args={[0.3, 0.16, 0.4]} />
-          <meshStandardMaterial color="#41332d" roughness={0.8} />
-        </mesh>
-        <mesh position={[0, -0.51, 0.24]} castShadow>
-          <boxGeometry args={[0.31, 0.11, 0.12]} />
-          <meshStandardMaterial color="#24292c" roughness={0.72} />
-        </mesh>
-        <mesh position={[0, -0.31, 0.11]} castShadow>
-          <boxGeometry args={[0.29, 0.26, 0.3]} />
-          <meshStandardMaterial color="#888f90" metalness={0.35} roughness={0.53} />
-        </mesh>
+        <FighterLeg ally={ally} />
       </group>
     </group>
   );
@@ -1429,7 +1845,7 @@ function Projectile({ projectile, playerRef, enemiesRef, onDamagePlayer, onDamag
       const player = playerRef.current;
       const playerCenter = new THREE.Vector3(
         player.x,
-        terrainHeight(player.x, player.z) + 1 + (player.jumpY || 0),
+        (player.y ?? terrainHeight(player.x, player.z)) + 1,
         player.z,
       );
       if (arrow.current.position.distanceTo(playerCenter) < 0.78) {
@@ -1776,13 +2192,32 @@ function WeaponIcon({ id }) {
   );
 }
 
-function Bow({ visible, attacking }) {
-  const bow = useRef();
+/* ===================== KAMON ===================== */
+
+const BOW_H = 0.62;      // kamon yarim balandligi
+const BOW_TIP_Z = -0.05; // tetiva uchlarining z holati
+const NOCK_Y = 0.08;     // o'q qo'yiladigan joy balandligi
+const bowNockZ = (draw) => BOW_TIP_Z + 0.34 * draw;
+
+// t: otilgandan beri o'tgan vaqt. Otilganda tetiva "qaytadi", keyin yangi o'q qo'yilib tortiladi.
+function bowPose(t) {
+  if (t < 0.07) return { draw: 1 - t / 0.07, nocked: false };
+  if (t < 0.14) return { draw: 0, nocked: false };
+  return { draw: THREE.MathUtils.smoothstep(t, 0.14, 0.44), nocked: true };
+}
+
+// Kamon: Y — yelkalar (tepa/past), -Z — otish yo'nalishi
+function BowModel({ scale = 1, state }) {
   const arrow = useRef();
-  const attackStart = useRef(-10);
-  const previousAttack = useRef(attacking);
-  const { camera } = useThree();
-  const stringLine = useMemo(() => {
+  const limb = useMemo(() => {
+    const pts = [];
+    for (let i = 0; i <= 18; i += 1) {
+      const u = (i / 18) * 2 - 1;
+      pts.push(new THREE.Vector3(0, u * BOW_H, -0.2 * (1 - u * u) - 0.05 * Math.abs(u) ** 7));
+    }
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 36, 0.021, 6);
+  }, []);
+  const string = useMemo(() => {
     const line = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()]),
       new THREE.LineBasicMaterial({ color: "#f2e8cf" }),
@@ -1791,67 +2226,134 @@ function Bow({ visible, attacking }) {
     return line;
   }, []);
 
-  useEffect(() => {
-    if (!bow.current) return undefined;
-    camera.add(bow.current);
-    return () => camera.remove(bow.current);
-  }, [camera]);
-
-  useFrame((state) => {
-    if (!bow.current) return;
-    if (attacking !== previousAttack.current) {
-      previousAttack.current = attacking;
-      attackStart.current = state.clock.elapsedTime;
-    }
-    const t = state.clock.elapsedTime - attackStart.current;
-    const draw = t < 0.08 ? 0 : Math.min((t - 0.08) / 0.32, 1);
-    const nockZ = -0.13 + draw * 0.34;
-    const pos = stringLine.geometry.attributes.position;
-    pos.setXYZ(0, 0, 0.4, -0.13);
-    pos.setXYZ(1, 0, 0, nockZ);
-    pos.setXYZ(2, 0, -0.4, -0.13);
+  useFrame(() => {
+    const s = state.current;
+    const pos = string.geometry.attributes.position;
+    pos.setXYZ(0, 0, BOW_H, BOW_TIP_Z);
+    pos.setXYZ(1, 0, NOCK_Y, bowNockZ(s.draw));
+    pos.setXYZ(2, 0, -BOW_H, BOW_TIP_Z);
     pos.needsUpdate = true;
-    arrow.current.position.z = nockZ;
-    arrow.current.visible = t >= 0.08;
-    bow.current.position.z = -0.85 + Math.max(0, 0.12 - t) * 0.8;
+    if (arrow.current) {
+      arrow.current.visible = s.nocked;
+      arrow.current.position.set(0, NOCK_Y, bowNockZ(s.draw));
+    }
   });
 
   return (
-    <group ref={bow} visible={visible} position={[0.42, -0.4, -0.85]} rotation={[0, 0, -0.1]}>
-      <group rotation={[0, Math.PI / 2, 0]}>
-        <mesh rotation={[0, 0, -Math.PI * 0.4]}>
-          <torusGeometry args={[0.42, 0.025, 8, 24, Math.PI * 0.8]} />
-          <meshStandardMaterial color="#805a37" roughness={0.7} />
+    <group scale={scale}>
+      <mesh geometry={limb} castShadow>
+        <meshStandardMaterial color="#8a5a2f" roughness={0.65} />
+      </mesh>
+      {/* tutqich */}
+      <mesh position={[0, -0.02, -0.2]} castShadow>
+        <cylinderGeometry args={[0.032, 0.032, 0.14, 8]} />
+        <meshStandardMaterial color="#3b2a1d" roughness={0.9} />
+      </mesh>
+      {[-0.07, 0.03].map((y) => (
+        <mesh key={y} position={[0, y, -0.2]}>
+          <cylinderGeometry args={[0.036, 0.036, 0.015, 8]} />
+          <meshStandardMaterial color="#d8a73f" metalness={0.8} roughness={0.3} />
         </mesh>
-      </group>
-      <mesh position={[0, 0, -0.42]}>
-        <boxGeometry args={[0.07, 0.16, 0.07]} />
-        <meshStandardMaterial color="#4a2f1d" roughness={0.8} />
+      ))}
+      {/* o'q tayanchi */}
+      <mesh position={[0, 0.065, -0.215]}>
+        <boxGeometry args={[0.03, 0.012, 0.06]} />
+        <meshStandardMaterial color="#d8a73f" metalness={0.7} roughness={0.35} />
       </mesh>
-      <mesh position={[0, -0.06, -0.36]}>
-        <boxGeometry args={[0.12, 0.14, 0.12]} />
-        <meshStandardMaterial color="#c89570" roughness={0.8} />
-      </mesh>
-      <primitive object={stringLine} />
+      {/* tetiva ulanadigan uchlar */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[0, s * BOW_H, BOW_TIP_Z]}>
+          <sphereGeometry args={[0.03, 8, 6]} />
+          <meshStandardMaterial color="#d8a73f" metalness={0.7} roughness={0.3} />
+        </mesh>
+      ))}
+      <primitive object={string} />
+      {/* o'q */}
       <group ref={arrow}>
-        <mesh position={[0, 0, -0.45]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.012, 0.012, 0.9, 6]} />
+        <mesh position={[0, 0, -0.43]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.011, 0.011, 0.86, 6]} />
           <meshStandardMaterial color="#d8c49a" roughness={0.6} />
         </mesh>
-        <mesh position={[0, 0, -0.95]} rotation={[-Math.PI / 2, 0, 0]}>
-          <coneGeometry args={[0.032, 0.11, 6]} />
+        <mesh position={[0, 0, -0.9]} rotation={[-Math.PI / 2, 0, 0]}>
+          <coneGeometry args={[0.03, 0.1, 6]} />
           <meshStandardMaterial color="#c4ccca" metalness={0.7} roughness={0.3} />
         </mesh>
-        <mesh position={[0, 0, -0.06]}>
-          <boxGeometry args={[0.1, 0.008, 0.1]} />
-          <meshStandardMaterial color="#e05060" roughness={0.8} />
-        </mesh>
-        <mesh position={[0, -0.01, 0.05]}>
-          <boxGeometry args={[0.1, 0.1, 0.12]} />
-          <meshStandardMaterial color="#c89570" roughness={0.8} />
-        </mesh>
+        {[0, 1, 2].map((i) => (
+          <mesh key={i} position={[0, 0, -0.04]} rotation={[0, 0, (i * Math.PI * 2) / 3]}>
+            <boxGeometry args={[0.1, 0.006, 0.1]} />
+            <meshStandardMaterial color="#e05060" roughness={0.8} />
+          </mesh>
+        ))}
       </group>
     </group>
+  );
+}
+
+// 1-shaxs ko'rinish
+function Bow({ visible, attacking }) {
+  const root = useRef();
+  const drawHand = useRef();
+  const state = useRef({ draw: 1, nocked: true });
+  const attackStart = useRef(-10);
+  const previousAttack = useRef(attacking);
+  const { camera } = useThree();
+
+  useEffect(() => {
+    if (!root.current) return undefined;
+    camera.add(root.current);
+    return () => camera.remove(root.current);
+  }, [camera]);
+
+  useFrame((s) => {
+    if (!root.current) return;
+    if (attacking !== previousAttack.current) {
+      previousAttack.current = attacking;
+      attackStart.current = s.clock.elapsedTime;
+    }
+    const t = s.clock.elapsedTime - attackStart.current;
+    Object.assign(state.current, bowPose(t));
+    root.current.position.z = -0.8 + Math.max(0, 0.12 - t) * 0.5;
+    if (drawHand.current) drawHand.current.position.set(0.02, NOCK_Y - 0.06, bowNockZ(state.current.draw) + 0.06);
+  });
+
+  return (
+    <group ref={root} visible={visible} position={[0.3, -0.3, -0.8]} rotation={[0.05, 0.12, 0]}>
+      <BowModel state={state} />
+      {/* chap qo'l — tutqichda */}
+      <mesh position={[0, -0.02, -0.2]}>
+        <boxGeometry args={[0.12, 0.13, 0.12]} />
+        <meshStandardMaterial color="#c89570" roughness={0.8} />
+      </mesh>
+      {/* o'ng qo'l — tetivani tortadi */}
+      <mesh ref={drawHand}>
+        <boxGeometry args={[0.1, 0.1, 0.12]} />
+        <meshStandardMaterial color="#c89570" roughness={0.8} />
+      </mesh>
+    </group>
+  );
+}
+
+// O'yinchi oyog'i (3-shaxs)
+function PlayerLeg() {
+  return (
+    <>
+      <mesh position={[0, -0.27, 0]} castShadow>
+        <boxGeometry args={[0.29, 0.54, 0.31]} />
+        <meshStandardMaterial color="#194c7b" roughness={0.79} />
+      </mesh>
+      <mesh position={[0, -0.37, 0.1]} castShadow>
+        <boxGeometry args={[0.32, 0.29, 0.34]} />
+        <meshStandardMaterial color="#8f9a9b" metalness={0.48} roughness={0.47} />
+      </mesh>
+      <mesh position={[0, -0.58, 0.08]} castShadow>
+        <boxGeometry args={[0.28, 0.16, 0.42]} />
+        <meshStandardMaterial color="#343839" roughness={0.73} />
+      </mesh>
+      <mesh position={[0, -0.58, 0.26]}>
+        <boxGeometry args={[0.29, 0.075, 0.025]} />
+        <meshStandardMaterial color="#687274" metalness={0.45} roughness={0.42} />
+      </mesh>
+    </>
   );
 }
 
@@ -1868,6 +2370,10 @@ function PlayerAvatar({ actor, visible, attacking, weapon }) {
   const previousAttack = useRef(attacking);
   const attackStart = useRef(-10);
   const previousPosition = useRef(new THREE.Vector2(actor.current.x, actor.current.z));
+  const bowState = useRef({ draw: 1, nocked: true });
+  const pistolSlide = useRef();
+  const pistolFlash = useRef();
+  const crossbowBolt = useRef();
 
   useFrame((state) => {
     if (!fighter.current) return;
@@ -1875,7 +2381,7 @@ function PlayerAvatar({ actor, visible, attacking, weapon }) {
     fighter.current.rotation.order = "YXZ";
     fighter.current.position.set(
       player.x,
-      terrainHeight(player.x, player.z) + player.jumpY,
+      player.y ?? terrainHeight(player.x, player.z) + player.jumpY,
       player.z,
     );
     fighter.current.rotation.y = player.yaw + Math.PI;
@@ -1886,17 +2392,44 @@ function PlayerAvatar({ actor, visible, attacking, weapon }) {
       previousAttack.current = attacking;
       attackStart.current = state.clock.elapsedTime;
     }
+    const t = state.clock.elapsedTime - attackStart.current;
     const sword = weapon === "sword" || weapon === "stick";
-    const pose = swingPose((state.clock.elapsedTime - attackStart.current) / 0.46, 0.22, 0.45);
+    const pose = swingPose(t / 0.46, 0.22, 0.45);
     const swinging = sword && pose.active;
+    const kick = sword ? 0 : Math.max(0, 0.16 - t) / 0.16;
+
     leftLeg.current.rotation.x = walk;
     rightLeg.current.rotation.x = -walk;
-    leftArm.current.rotation.x = sword ? -0.8 : -walk * 0.45;
-    leftElbow.current.rotation.x = sword ? -0.6 : -0.25 + Math.max(0, -walk) * 0.35;
-    rightArm.current.rotation.x = sword ? (swinging ? pose.arm : -0.4 + walk * 0.35) : -1.3;
-    rightArm.current.rotation.z = -0.1;
-    rightElbow.current.rotation.x = sword ? -0.3 : -0.2;
-    fighter.current.rotation.x = swinging ? pose.power * 0.15 : 0;
+
+    if (sword) {
+      leftArm.current.rotation.x = -0.8;
+      leftElbow.current.rotation.x = -0.6;
+      rightArm.current.rotation.x = swinging ? pose.arm : -0.4 + walk * 0.35;
+      rightArm.current.rotation.z = -0.1;
+      rightElbow.current.rotation.x = -0.3;
+    } else if (weapon === "bow") {
+      Object.assign(bowState.current, bowPose(t));
+      leftArm.current.rotation.x = -1.45;            // chap qo'l kamonni ushlaydi
+      leftElbow.current.rotation.x = -0.05;
+      rightArm.current.rotation.x = -1.35;           // o'ng qo'l tetivani tortadi
+      rightArm.current.rotation.z = -0.1;
+      rightElbow.current.rotation.x = 0.1 + bowState.current.draw * 1.7;
+    } else {
+      leftArm.current.rotation.x = weapon === "pistol" ? -walk * 0.45 : -1.2;
+      leftElbow.current.rotation.x = -0.3;
+      rightArm.current.rotation.x = -1.3 - kick * 0.35; // otganda qo'l tepaga tepadi
+      rightArm.current.rotation.z = -0.1;
+      rightElbow.current.rotation.x = -0.2 - kick * 0.2;
+    }
+
+    if (pistolFlash.current) {
+      pistolFlash.current.visible = weapon === "pistol" && t < 0.05;
+      pistolFlash.current.rotation.z = t * 90;
+    }
+    if (pistolSlide.current) pistolSlide.current.position.z = t < 0.05 ? -0.07 : -Math.max(0, 0.1 - t) * 0.7;
+    if (crossbowBolt.current) crossbowBolt.current.visible = t > 0.5;
+
+    fighter.current.rotation.x = swinging ? pose.power * 0.15 : -kick * 0.06;
     cape.current.rotation.x = 0.1 + Math.abs(walk) * 0.5 + (swinging ? pose.power * 0.4 : 0);
     trail.current.material.opacity = swinging ? pose.power * 0.85 : 0;
   });
@@ -2054,6 +2587,12 @@ function PlayerAvatar({ actor, visible, attacking, weapon }) {
             <mesh position={[0, -0.034, 0]}><cylinderGeometry args={[0.27, 0.27, 0.02, 20]} /><meshStandardMaterial color="#245985" roughness={0.6} /></mesh>
             <mesh position={[0, -0.06, 0]}><sphereGeometry args={[0.09, 12, 8]} /><meshStandardMaterial color="#d5b46a" metalness={0.8} roughness={0.3} /></mesh>
           </group>
+          {/* kamon chap qo'lda ushlanadi */}
+          <group position={[0, -0.09, 0.03]} rotation={[-Math.PI / 2, 0, 0]} visible={weapon === "bow"}>
+            <group rotation={[0, 0, Math.PI]}>
+              <BowModel scale={1.25} state={bowState} />
+            </group>
+          </group>
         </group>
       </group>
       <group ref={rightArm} position={[0.4, 1.45, 0]}>
@@ -2084,55 +2623,20 @@ function PlayerAvatar({ actor, visible, attacking, weapon }) {
             </group>
           ) : weapon === "pistol" ? (
             <group position={[0, -0.32, 0.08]} rotation={[Math.PI / 2, 0, 0]}>
-              <PistolModel scale={1.5} />
+              <PistolModel scale={1.5} slideRef={pistolSlide} flashRef={pistolFlash} />
             </group>
           ) : weapon === "crossbow" ? (
             <group position={[0, -0.3, 0.1]} rotation={[Math.PI / 2, 0, 0]}>
-              <CrossbowModel scale={0.9} />
+              <CrossbowModel scale={0.9} boltRef={crossbowBolt} />
             </group>
-          ) : (
-            <group position={[0, -0.36, 0.16]} rotation={[0, 0, Math.PI / 2]}>
-              <mesh><torusGeometry args={[0.34, 0.035, 8, 24, Math.PI * 1.5]} /><meshStandardMaterial color="#805a37" roughness={0.7} /></mesh>
-              <mesh rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.012, 0.012, 0.65, 6]} /><meshStandardMaterial color="#e7ddca" roughness={0.68} /></mesh>
-            </group>
-          )}
+          ) : null}
         </group>
       </group>
       <group ref={leftLeg} position={[-0.17, 0.61, 0]}>
-        <mesh position={[0, -0.27, 0]} castShadow>
-          <boxGeometry args={[0.29, 0.54, 0.31]} />
-          <meshStandardMaterial color="#194c7b" roughness={0.79} />
-        </mesh>
-        <mesh position={[0, -0.37, 0.1]} castShadow>
-          <boxGeometry args={[0.32, 0.29, 0.34]} />
-          <meshStandardMaterial color="#8f9a9b" metalness={0.48} roughness={0.47} />
-        </mesh>
-        <mesh position={[0, -0.58, 0.08]} castShadow>
-          <boxGeometry args={[0.28, 0.16, 0.42]} />
-          <meshStandardMaterial color="#343839" roughness={0.73} />
-        </mesh>
-        <mesh position={[0, -0.58, 0.26]}>
-          <boxGeometry args={[0.29, 0.075, 0.025]} />
-          <meshStandardMaterial color="#687274" metalness={0.45} roughness={0.42} />
-        </mesh>
+        <PlayerLeg />
       </group>
       <group ref={rightLeg} position={[0.17, 0.61, 0]}>
-        <mesh position={[0, -0.27, 0]} castShadow>
-          <boxGeometry args={[0.29, 0.54, 0.31]} />
-          <meshStandardMaterial color="#194c7b" roughness={0.79} />
-        </mesh>
-        <mesh position={[0, -0.37, 0.1]} castShadow>
-          <boxGeometry args={[0.32, 0.29, 0.34]} />
-          <meshStandardMaterial color="#8f9a9b" metalness={0.48} roughness={0.47} />
-        </mesh>
-        <mesh position={[0, -0.58, 0.08]} castShadow>
-          <boxGeometry args={[0.28, 0.16, 0.42]} />
-          <meshStandardMaterial color="#343839" roughness={0.73} />
-        </mesh>
-        <mesh position={[0, -0.58, 0.26]}>
-          <boxGeometry args={[0.29, 0.075, 0.025]} />
-          <meshStandardMaterial color="#687274" metalness={0.45} roughness={0.42} />
-        </mesh>
+        <PlayerLeg />
       </group>
     </group>
   );
@@ -2196,9 +2700,10 @@ function Sword({ attacking, visible, kind }) {
 function GameScene({
   setPlayerHealth,
   setEnemyHealth,
-  setEnemyCount,
   setStarted,
   setMenuOpen,
+  setFlagUi,
+  onCtf,
   viewMode,
   setViewMode,
   enemyLimit,
@@ -2213,19 +2718,35 @@ function GameScene({
   remotes = [],
   paused = false,
 }) {
-  const { camera, gl } = useThree();
+  const { camera, gl, scene } = useThree();
+
+  // Kameraga biriktirilgan qurollar 1-shaxsda ko'rinishi uchun kamera sahnaning ichida bo'lishi shart
+  useEffect(() => {
+    scene.add(camera);
+    return () => {
+      scene.remove(camera);
+    };
+  }, [scene, camera]);
+
   const player = useRef({
     x: 0,
-    z: 7,
+    z: 25,
     yaw: 0,
     pitch: 0,
     health: 100,
+    y: terrainHeight(0, 25),
+    vy: 0,
+    grounded: true,
     jumpY: 0,
     jumpVelocity: 0,
   });
+  const camY = useRef(player.current.y);
   const cameraOrbit = useRef({ yaw: 0, pitch: 0 });
   const keys = useRef(new Set());
   const enemies = useRef([]);
+  // Bayroqlar: kim ko'tarib yuribdi (carrier) va o'yin tugadimi (over)
+  const flags = useRef({ red: { carrier: null }, blue: { carrier: null }, over: false });
+  const lastUi = useRef("idle");
   // Onlaynda dushmanlar — boshqa jamoadagi tirik o'yinchilar, yakkaxonda — AI
   const foesRef = useMemo(
     () => ({ get current() { return net ? net.getEnemies() : enemies.current; } }),
@@ -2237,8 +2758,8 @@ function GameScene({
   const allies = useMemo(
     () => Array.from({ length: net ? 0 : Math.max(0, allyLimit - 1) }, (_, index) => ({
       id: index + 1,
-      position: new THREE.Vector3(-2.2 + (index % 3) * 2.2, 0, 7 + Math.floor(index / 3) * 1.8),
-      home: { x: -2.2 + (index % 3) * 2.2, z: 7 + Math.floor(index / 3) * 1.8 },
+      position: new THREE.Vector3(-2.2 + (index % 3) * 2.2, 0, 25 + Math.floor(index / 3) * 1.8),
+      home: { x: -2.2 + (index % 3) * 2.2, z: 25 + Math.floor(index / 3) * 1.8 },
       health: 100,
     })),
     [allyLimit, net],
@@ -2277,14 +2798,11 @@ function GameScene({
         enemy.id === target.id ? { ...enemy, health: target.health } : enemy,
       ),
     );
-    if (target.health === 0) {
-      setEnemyCount((count) => count - 1);
-      if (byPlayer) {
-        addCoins(KILL_COINS);
-        setEffects((current) => [...current.slice(-12), { id: ++effectId.current, coin: true, label: `+${KILL_COINS} 🪙`, damage: 0, position: [target.position.x, target.position.y + 2.2, target.position.z] }]);
-      }
+    if (target.health === 0 && byPlayer) {
+      addCoins(KILL_COINS);
+      setEffects((current) => [...current.slice(-12), { id: ++effectId.current, coin: true, label: `+${KILL_COINS} 🪙`, damage: 0, position: [target.position.x, target.position.y + 2.2, target.position.z] }]);
     }
-  }, [setEnemyCount, setEnemyHealth, addCoins, net, weapon]);
+  }, [setEnemyHealth, addCoins, net, weapon]);
 
   const launchPlayerArrow = useCallback(() => {
     const actor = player.current;
@@ -2297,7 +2815,7 @@ function GameScene({
     ).normalize();
     const origin = new THREE.Vector3(
       actor.x + Math.cos(yaw) * 0.35,
-      terrainHeight(actor.x, actor.z) + 1.48 + actor.jumpY,
+      actor.y + 1.48,
       actor.z - Math.sin(yaw) * 0.35,
     );
     setProjectiles((current) => [
@@ -2316,7 +2834,7 @@ function GameScene({
   }, [viewMode, weapon, net]);
 
   const doAttack = useCallback(() => {
-    if (player.current.health <= 0) return;
+    if (player.current.health <= 0 || flags.current.over) return;
     if (performance.now() < nextAttackTime.current) return;
     nextAttackTime.current = performance.now() + spec.cooldown;
     if (isTouch) {
@@ -2407,8 +2925,9 @@ function GameScene({
       if (slot >= 0 && slot < WEAPON_ORDER.length && owned.includes(WEAPON_ORDER[slot])) setWeapon(WEAPON_ORDER[slot]);
       if (key === "b" && owned.includes("bow")) setWeapon("bow");
       keys.current.add(key);
-      if (key === " " && !event.repeat && player.current.jumpY === 0) {
-        player.current.jumpVelocity = 7.5;
+      if (key === " " && !event.repeat && player.current.grounded) {
+        player.current.vy = 7.5;
+        player.current.grounded = false;
       }
     };
     const onKeyUp = (event) => keys.current.delete(keyFromEvent(event));
@@ -2493,6 +3012,13 @@ function GameScene({
         setPlayerHealth(player.current.health);
         shake.current = Math.max(shake.current, 0.09);
       },
+      onCapture: () => {
+        // raider ko'k bayroqni qizil qasrga olib keldi
+        if (flags.current.over) return;
+        flags.current.over = true;
+        flags.current.blue.carrier = null;
+        onCtf("red");
+      },
       onRespawn: () => setEnemyHealth((cur) => cur.map((e) => (e.id === enemy.id ? { ...e, health: 100 } : e))),
       onShoot: (origin, direction) => {
         setProjectiles((current) => [
@@ -2532,13 +3058,15 @@ function GameScene({
 
   useFrame((_, delta) => {
     const actor = player.current;
+    const f = flags.current;
     const alive = !net || net.me.current.hp > 0;
     if (net) {
       const mine = net.me.current;
       if (mine.pendingSpawn) {
         const s = mine.pendingSpawn;
         mine.pendingSpawn = null;
-        Object.assign(actor, { x: s.x, z: s.z, yaw: s.yaw, pitch: 0, jumpY: 0, jumpVelocity: 0 });
+        Object.assign(actor, { x: s.x, z: s.z, yaw: s.yaw, pitch: 0, y: terrainHeight(s.x, s.z), vy: 0, grounded: true, jumpY: 0, jumpVelocity: 0 });
+        camY.current = actor.y;
         cameraOrbit.current.yaw = s.yaw;
         cameraOrbit.current.pitch = 0;
       }
@@ -2550,7 +3078,10 @@ function GameScene({
     }
     if (touchControls.current.jump) {
       touchControls.current.jump = false;
-      if (actor.jumpY === 0) actor.jumpVelocity = 7.5;
+      if (actor.grounded) {
+        actor.vy = 7.5;
+        actor.grounded = false;
+      }
     }
     const swing = activeSwing.current;
     if (melee && !swing.hit && swing.elapsed < 0.4) {
@@ -2563,6 +3094,7 @@ function GameScene({
         let closestDistance = spec.reach;
         for (const enemy of foesRef.current) {
           if (enemy.health <= 0) continue;
+          if (Math.abs(enemy.position.y - actor.y) > 2.4) continue; // teroqdan pastga zarba yetmaydi
           const dx = enemy.position.x - actor.x;
           const dz = enemy.position.z - actor.z;
           const distance = Math.hypot(dx, dz);
@@ -2586,7 +3118,7 @@ function GameScene({
     const sideways = Number(pressed.has("d") || pressed.has("arrowright")) -
       Number(pressed.has("a") || pressed.has("arrowleft")) + touchControls.current.moveX;
     const length = Math.hypot(forward, sideways);
-    if (length > 0 && alive) {
+    if (length > 0 && alive && !f.over) {
       const speed = 5 * delta * Math.min(length, 1) / length;
       const moveYaw = viewMode === "third" ? cameraOrbit.current.yaw : actor.yaw;
       const moveX = -Math.sin(moveYaw) * forward + Math.cos(moveYaw) * sideways;
@@ -2596,44 +3128,79 @@ function GameScene({
       if (viewMode === "third") {
         actor.yaw = Math.atan2(-moveX, -moveZ);
       }
-      actor.x = THREE.MathUtils.clamp(actor.x, -38, 38);
-      actor.z = THREE.MathUtils.clamp(actor.z, -38, 38);
+      actor.x = THREE.MathUtils.clamp(actor.x, -PLAY_LIMIT, PLAY_LIMIT);
+      actor.z = THREE.MathUtils.clamp(actor.z, -PLAY_LIMIT, PLAY_LIMIT);
       pushOut(actor, 0.45);
     }
 
-    if (actor.jumpY > 0 || actor.jumpVelocity > 0) {
-      actor.jumpVelocity -= 18 * delta;
-      actor.jumpY = Math.max(0, actor.jumpY + actor.jumpVelocity * delta);
-      if (actor.jumpY === 0) actor.jumpVelocity = 0;
+    // Tik harakat: yer, zina pog'onalari va teroq ustida yurish, sakrash va tushish
+    const support = supportHeight(actor.x, actor.z, actor.y);
+    const onSurface = actor.y <= support + 0.03 && actor.vy <= 0;
+    if (onSurface) {
+      actor.y = support;
+      actor.vy = 0;
+      actor.grounded = true;
+    } else {
+      actor.vy -= 18 * delta;
+      actor.y += actor.vy * delta;
+      actor.grounded = false;
+      if (actor.vy <= 0 && actor.y <= support) {
+        actor.y = support;
+        actor.vy = 0;
+        actor.grounded = true;
+      }
     }
+    actor.jumpY = actor.y - terrainHeight(actor.x, actor.z);
 
     if (!net) {
       const now = performance.now();
       for (const p of getWorld(mapId).packs) {
-        if (now >= p.t && actor.health > 0 && actor.health < 100 && Math.hypot(actor.x - p.x, actor.z - p.z) < 1.3) {
+        if (now >= p.t && actor.health > 0 && actor.health < 100 && Math.hypot(actor.x - p.x, actor.z - p.z) < 1.3 && Math.abs(actor.y - terrainHeight(p.x, p.z)) < 2) {
           actor.health = Math.min(100, actor.health + 40);
           setPlayerHealth(actor.health);
           p.t = now + 20000;
           setEffects((c) => [...c.slice(-12), { id: ++effectId.current, coin: true, label: "+40 ❤", damage: 0, position: [p.x, 2, p.z] }]);
         }
       }
+
+      // Bayroqni olish va qasrga olib kelish
+      if (f.red.carrier === actor && actor.health <= 0) f.red.carrier = null;
+      if (!f.over && actor.health > 0) {
+        const home = FLAG_HOME.red;
+        if (!f.red.carrier && Math.hypot(actor.x - home.x, actor.z - home.z) < 1.7 && Math.abs(actor.y - FLOOR_Y) < 1.6) {
+          f.red.carrier = actor;
+          setEffects((c) => [...c.slice(-12), { id: ++effectId.current, coin: true, label: "🚩", damage: 0, position: [actor.x, actor.y + 2.4, actor.z] }]);
+        }
+        if (f.red.carrier === actor && insideCastle(BLUE_CASTLE, actor.x, actor.z)) {
+          f.over = true;
+          f.red.carrier = null;
+          onCtf("blue");
+        }
+      }
+      const ui = f.red.carrier === actor ? "carry" : f.blue.carrier ? "stolen" : "idle";
+      if (ui !== lastUi.current) {
+        lastUi.current = ui;
+        setFlagUi(ui);
+      }
     }
 
-    const ground = terrainHeight(actor.x, actor.z);
+    // Kamera: zina ustida sakramasligi uchun balandlik silliq ergashadi
+    camY.current += (actor.y - camY.current) * (1 - Math.exp(-delta * 16));
+    const baseY = camY.current;
     if (viewMode === "first") {
-      camera.position.set(actor.x, ground + 1.68 + actor.jumpY, actor.z);
+      camera.position.set(actor.x, baseY + 1.68, actor.z);
       camera.rotation.order = "YXZ";
       camera.rotation.y = actor.yaw;
       camera.rotation.x = actor.pitch;
     } else {
       camera.position.set(
         actor.x + Math.sin(cameraOrbit.current.yaw) * 4.2,
-        ground + 3.1 + cameraOrbit.current.pitch * 2 + actor.jumpY,
+        baseY + 3.1 + cameraOrbit.current.pitch * 2,
         actor.z + Math.cos(cameraOrbit.current.yaw) * 4.2,
       );
       camera.lookAt(
         actor.x,
-        ground + 1.15 + cameraOrbit.current.pitch * 2.5 + actor.jumpY,
+        baseY + 1.15 + cameraOrbit.current.pitch * 2.5,
         actor.z,
       );
     }
@@ -2647,7 +3214,7 @@ function GameScene({
       if (enemy.health <= 0) continue;
       const distance = Math.hypot(enemy.position.x - actor.x, enemy.position.z - actor.z);
       enemy.position.y = terrainHeight(enemy.position.x, enemy.position.z);
-      if (distance < 1.45) {
+      if (distance < 1.45 && Math.abs(actor.y - enemy.position.y) < 2) {
         const safeDistance = Math.max(distance, 0.001);
         enemy.position.x += ((enemy.position.x - actor.x) / safeDistance) * delta * 1.3;
         enemy.position.z += ((enemy.position.z - actor.z) / safeDistance) * delta * 1.3;
@@ -2676,10 +3243,10 @@ function GameScene({
         intensity={sky.sunI}
         shadow-mapSize-width={isTouch ? 1024 : 2048}
         shadow-mapSize-height={isTouch ? 1024 : 2048}
-        shadow-camera-left={-38}
-        shadow-camera-right={38}
-        shadow-camera-top={38}
-        shadow-camera-bottom={-38}
+        shadow-camera-left={-52}
+        shadow-camera-right={52}
+        shadow-camera-top={52}
+        shadow-camera-bottom={-52}
         shadow-bias={-0.0004}
         shadow-normalBias={0.04}
       />
@@ -2690,9 +3257,11 @@ function GameScene({
       <Terrain mapId={mapId} />
       <World mapId={mapId} />
       {ENEMY_ZONES.map(([x, z]) => <SpawnFlag key={`${x}_${z}`} x={x} z={z} color="#d8283f" />)}
-      <SpawnFlag x={0} z={11} color="#2f6fe0" />
+      <SpawnFlag x={0} z={29} color="#2f6fe0" />
+      {!net && <CtfFlag team="red" flagsRef={flags} playerRef={player} />}
+      {!net && <CtfFlag team="blue" flagsRef={flags} playerRef={player} />}
       {enemies.current.map((enemy) => (
-        <Fighter key={enemy.id} enemy={enemy} targetRef={player} alliesRef={alliesRef} pausedRef={pausedRef} />
+        <Fighter key={enemy.id} enemy={enemy} targetRef={player} alliesRef={alliesRef} pausedRef={pausedRef} flagsRef={flags} />
       ))}
       {net && remotes.map((r) => (
         <Fighter key={r.id} enemy={r} targetRef={player} ally={r.team === "blue"} remote />
@@ -2753,7 +3322,8 @@ export default function App() {
   const [enemyHealth, setEnemyHealth] = useState(
     STARTING_ENEMIES.slice(0, 4).map(({ id, health }) => ({ id, health })),
   );
-  const [enemyCount, setEnemyCount] = useState(4 * KILLS_PER);
+  const [ctfResult, setCtfResult] = useState(null); // null | "blue" (sen yutding) | "red" (raqib yutdi)
+  const [flagUi, setFlagUi] = useState("idle");     // idle | carry | stolen
   const [started, setStarted] = useState(false);
   const [menuOpen, setMenuOpen] = useState(true);
   const [hasEntered, setHasEntered] = useState(false);
@@ -2804,7 +3374,8 @@ export default function App() {
   const ot = ONLINE_TEXT[language];
   const showHealth = onlineMode ? online.myHp : playerHealth;
   const inOnlineMenu = menuOpen && (menuPage === "online" || menuPage === "lobby");
-  const finished = !onlineMode && !inOnlineMenu && (playerHealth <= 0 || enemyCount === 0);
+  const finished = !onlineMode && !inOnlineMenu && (playerHealth <= 0 || ctfResult !== null);
+  const won = ctfResult === "blue" && playerHealth > 0;
 
   // Xonaga kirganda / chiqqanda sahnani yangidan boshlash
   const wasOnline = useRef(false);
@@ -2814,7 +3385,6 @@ export default function App() {
     wasOnline.current = onlineMode;
     setPlayerHealth(100);
     setEnemyHealth(STARTING_ENEMIES.slice(0, enemyLimit).map(({ id, health }) => ({ id, health })));
-    setEnemyCount(enemyLimit * KILLS_PER);
     setResetKey((key) => key + 1);
     if (left) {
       setMenuOpen(true);
@@ -2826,14 +3396,16 @@ export default function App() {
   useEffect(() => {
     winPaid.current = false;
     setRunCoins(0);
+    setCtfResult(null);
+    setFlagUi("idle");
   }, [resetKey]);
 
   useEffect(() => {
-    if (enemyCount === 0 && playerHealth > 0 && !winPaid.current) {
+    if (ctfResult === "blue" && playerHealth > 0 && !winPaid.current) {
       winPaid.current = true;
       addCoins(WIN_COINS);
     }
-  }, [enemyCount, playerHealth, addCoins]);
+  }, [ctfResult, playerHealth, addCoins]);
 
   const stickEl = useRef(null);
   const STICK_MAX = 44;
@@ -2907,7 +3479,6 @@ export default function App() {
   const restart = () => {
     setPlayerHealth(100);
     setEnemyHealth(STARTING_ENEMIES.slice(0, enemyLimit).map(({ id, health }) => ({ id, health })));
-    setEnemyCount(enemyLimit * KILLS_PER);
     setStarted(false);
     setMenuOpen(true);
     setMenuPage("main");
@@ -2919,7 +3490,6 @@ export default function App() {
     setEnemyLimit(count);
     setPlayerHealth(100);
     setEnemyHealth(STARTING_ENEMIES.slice(0, count).map(({ id, health }) => ({ id, health })));
-    setEnemyCount(count * KILLS_PER);
     setStarted(false);
     document.exitPointerLock?.();
     setResetKey((key) => key + 1);
@@ -2939,21 +3509,26 @@ export default function App() {
     document.querySelector(".game canvas")?.requestPointerLock?.();
   };
 
+  const firstAliveHealth = enemyHealth.find((enemy) => enemy.health > 0)?.health ?? 0;
+  const goalText = flagUi === "carry" ? text.goalReturn : flagUi === "stolen" ? text.goalStolen : text.goalSteal;
+  const flagIcon = flagUi === "carry" ? "🚩" : flagUi === "stolen" ? "⚠" : "⚑";
+
   return (
     <main className="game">
       <Canvas
         key={resetKey}
         shadows
         dpr={isTouch ? [1, 1.25] : [1, 1.5]}
-        camera={{ position: [0, 1.68, 7], fov: 76, near: 0.1, far: 320 }}
+        camera={{ position: [0, 1.68, 25], fov: 76, near: 0.1, far: 320 }}
         gl={{ antialias: !isTouch, powerPreference: "high-performance", toneMapping: THREE.ACESFilmicToneMapping, toneMappingExposure: 0.95 }}
       >
         <GameScene
           setPlayerHealth={setPlayerHealth}
           setEnemyHealth={setEnemyHealth}
-          setEnemyCount={setEnemyCount}
           setStarted={setStarted}
           setMenuOpen={setMenuOpen}
+          setFlagUi={setFlagUi}
+          onCtf={setCtfResult}
           viewMode={viewMode}
           setViewMode={setViewMode}
           enemyLimit={enemyLimit}
@@ -2966,7 +3541,7 @@ export default function App() {
           touchControls={touchControls}
           net={onlineMode ? online.net : null}
           remotes={online.remoteList}
-          paused={menuOpen}
+          paused={menuOpen || finished}
         />
       </Canvas>
 
@@ -2978,7 +3553,7 @@ export default function App() {
         {onlineMode ? (
           <div className="score-card score-online"><span>{ot.score}</span><strong>{online.score.blue}:{online.score.red}</strong></div>
         ) : (
-          <div className="score-card"><span>{text.redEnemies}</span><strong>{enemyCount}</strong></div>
+          <div className={`score-card flag-card flag-${flagUi}`}><span>{text.flagLabel}</span><strong>{flagIcon}</strong></div>
         )}
         {onlineMode ? (
           <section className="health-card online-card">
@@ -2986,11 +3561,15 @@ export default function App() {
           </section>
         ) : (
           <section className="health-card enemy-card">
-            <div className="health-label"><span>{text.enemyHealth}</span><strong>{enemyHealth.find((enemy) => enemy.health > 0)?.health ?? 0}%</strong></div>
-            <div className="health-track"><div className="health-fill red-fill" style={{ width: `${enemyHealth.find((enemy) => enemy.health > 0)?.health ?? 0}%` }} /></div>
+            <div className="health-label"><span>{text.enemyHealth}</span><strong>{firstAliveHealth}%</strong></div>
+            <div className="health-track"><div className="health-fill red-fill" style={{ width: `${firstAliveHealth}%` }} /></div>
           </section>
         )}
       </header>
+
+      {!onlineMode && !menuOpen && !finished && (
+        <div className={`objective objective-${flagUi}`} aria-live="polite">{goalText}</div>
+      )}
 
       {!menuOpen && !finished && (
         <button
@@ -3277,6 +3856,7 @@ export default function App() {
           {menuPage === "controls" && (
             <div className="menu-card controls-card">
               <div className="settings-ribbon">{text.controlsTitle}</div>
+              <p>{text.goalInfo}</p>
               <p>{text.controls}</p>
               <p>{text.move} · {text.jump}</p>
               <p>{text.attack} · {text.weaponKeys} · {text.cameraKey}</p>
@@ -3303,9 +3883,9 @@ export default function App() {
       )}
       {finished && (
         <div className="end-overlay">
-          <div className={`end-card ${playerHealth <= 0 ? "defeat" : "victory"}`}>
-            <strong>{playerHealth <= 0 ? text.defeat : text.victory}</strong>
-            <span>{playerHealth <= 0 ? text.lost : text.won}</span>
+          <div className={`end-card ${won ? "victory" : "defeat"}`}>
+            <strong>{won ? text.victory : text.defeat}</strong>
+            <span>{won ? text.won : playerHealth <= 0 ? text.lost : text.flagLost}</span>
             <span className="end-coins">🪙 +{runCoins}</span>
             <button onClick={restart}>{text.playAgain}</button>
           </div>
